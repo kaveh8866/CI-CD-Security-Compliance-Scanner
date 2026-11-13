@@ -32,10 +32,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # The pinned image lags Debian's security archive: zlib CVE-2026-76844 and
 # CVE-2026-85091 are fixed in deb13u1 but still present in the base layer.
-# Upgrade installed packages only, then drop apt lists again so the runtime
-# layer stays free of package-manager state.
+# Install that exact version instead of running a broad upgrade, so rebuilding
+# the same digest cannot pick up unrelated package changes. If Debian
+# supersedes this version, refresh the pin deliberately; an unavailable
+# version fails the build instead of silently drifting.
+ARG ZLIB_VERSION=1:1.3.dfsg+really1.3.1-1+deb13u1
 RUN apt-get update \
- && DEBIAN_FRONTEND=noninteractive apt-get -y upgrade \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      "zlib1g=${ZLIB_VERSION}" \
  && apt-get dist-clean
 
 # Fixed uid/gid so a bind-mounted workspace has predictable ownership.
