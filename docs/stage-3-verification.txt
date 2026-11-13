@@ -1,0 +1,114 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 3 — Agent Guide & Manual Prerequisites
+Evidence transcript
+Date: 2026-11-13
+================================================================================
+
+DELIVERABLES
+------------
+AGENT_GUIDE.md      395 lines, 13 top-level sections
+MANUAL_PREREQS.md   416 lines, 12 top-level sections
+
+Both live at the repository root, where CloudGuard's portability audit expects
+the documentation pair (README.md + AGENT_GUIDE.md).
+
+--------------------------------------------------------------------------------
+1. AGENT_GUIDE.md — content map
+--------------------------------------------------------------------------------
+  0  Non-negotiables (credential redaction, Git boundary, no public API,
+     deployment-stage separation, OCI-only certification scope)
+  1  Repository map (module-by-module) and ports/image/runtime
+  2  Prerequisites check, including the workspace OpenTofu path
+  3  Fast path: compose build, health check, expected healthz JSON
+  4  Running scans: HTTP, host CLI, container CLI, expected fixture numbers
+  5  Reading the report: finding fields, Python one-liners for severity and
+     failed-control queries, read-only mount pattern for a real checkout
+  6  Audit logs: structured stdout events, docker logs filters, proof that no
+     fixture credential value appears in logs
+  7  Policy work: validate, edit rules, wildcard behaviour, advisory entries
+  8  Verification suite: unit tests, smoke contract, Terraform checks
+  9  CI integration: GitHub Actions and GitLab CI snippets that gate on exit code
+ 10  Troubleshooting: 9 concrete symptom/cause/fix rows
+ 11  Change discipline: test, boundary check, evidence, semantic commits
+ 12  Certification scope: OCI-only, trial credits, what is and is not proven
+
+Every command in sections 3–8 was previously executed in Stages 1–2; expected
+outputs match those transcripts (65 unit tests, 25 smoke assertions, 20 findings,
+tofu validate success, plan 6 to add).
+
+--------------------------------------------------------------------------------
+2. MANUAL_PREREQS.md — content map
+--------------------------------------------------------------------------------
+  Phase 0  Decisions: region, compartment, gate severity, public-access posture,
+           cost envelope and budget alert
+  Phase 1  Workstation tools and verification commands
+  Phase 2  OCI account, API signing key, ~/.oci/config, SSH key pair, egress IP
+  Phase 3  Clone, .env creation (mode 600), variable table, Git-boundary checks
+  Phase 4  Compliance policy: 10 controls, fail_on and ignore decisions,
+           validate/test commands with expected exit codes
+  Phase 5  Target repository hooks: GitHub Actions, GitLab CI, pre-commit, and
+           service mode through an SSH tunnel
+  Phase 6  Terraform inputs: every tfvars field, safety checks, plan expectation
+  Phase 7  Pre-deployment checklist (nine required boxes)
+  Phase 8  Deployment-day sequence: apply, cloud-init wait, Docker, compose,
+           health, live drill, evidence commit
+  Phase 9  Teardown: explicit request only, plan -destroy, destroy, empty state,
+           provider-side confirmation
+  +        Troubleshooting table and certification scope
+
+--------------------------------------------------------------------------------
+3. FORMATTING CHECKS
+--------------------------------------------------------------------------------
+$ python (fence parity, required phrases, referenced paths)
+
+  AGENT_GUIDE.md: lines=395 fences=36 balanced=True h2=13
+    contains 'Oracle Cloud Infrastructure': True
+    contains 'trial credits': True
+    contains 'AWS': True
+    contains 'GCP': True
+    contains 'cloud-agnostic': True
+    referenced paths: 15 | missing: ['package.json']
+
+  MANUAL_PREREQS.md: lines=416 fences=30 balanced=True h2=12
+    contains 'Oracle Cloud Infrastructure': True
+    contains 'trial credits': True
+    contains 'AWS': True
+    contains 'GCP': True
+    contains 'cloud-agnostic': True
+    referenced paths: 4 | missing: ['.github/workflows/security-scan.yml',
+                                    '.gitlab-ci.yml']
+
+The three "missing" paths are illustrative files in the *target* repositories
+(an npm manifest and two CI workflow files), not paths in this repository. Every
+path that refers to this repository exists.
+
+--------------------------------------------------------------------------------
+4. ZERO-LEAK CHECK
+--------------------------------------------------------------------------------
+CloudGuard securitySanitizerService over the project:
+
+  files scanned: 56 | exposed findings: 0 | gitignored artefacts: 1 (.env)
+  AGENT_GUIDE.md secret signatures:   none
+  MANUAL_PREREQS.md secret signatures: none
+
+The guides contain no provider-shaped credential, no PEM block and no OCID that
+matches CloudGuard's signature rules. `.env` remains the only blocked artefact
+and is gitignored.
+
+--------------------------------------------------------------------------------
+5. CERTIFICATION SCOPE STATEMENT
+--------------------------------------------------------------------------------
+Both documents state, in their own sections, that:
+
+- the container and IaC are cloud-agnostic with AWS and GCP mappings documented;
+- final production verification and testing certification are performed
+  strictly on Oracle Cloud Infrastructure using trial credits;
+- AWS and GCP are ports, not certified targets;
+- no deployment is claimed until the deployment stage records live evidence.
+  Stage 3 has validated IaC (plan 6 to add) but has not applied it.
+
+================================================================================
+STAGE 3 RESULT: COMPLETE
+Documentation pair present, formatted, leak-free, and cross-linked from README.
+================================================================================

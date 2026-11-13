@@ -56,6 +56,17 @@ cloud resource exists or bills today.
 
 ---
 
+## 📚 Documentation
+
+| Document | Audience | Contents |
+| --- | --- | --- |
+| [`AGENT_GUIDE.md`](AGENT_GUIDE.md) | AI coding agents (Cursor, Claude Code, Windsurf) | bootstrap, scan, report and audit-log inspection, policy work, tests, CI wiring, troubleshooting |
+| [`MANUAL_PREREQS.md`](MANUAL_PREREQS.md) | human operator | OCI credentials, SSH keys, `.env`, policy choices, repository hooks, pre-deployment checklist, teardown |
+| [`docker/README.md`](docker/README.md) | whoever runs the container | flag-by-flag hardening rationale |
+| [`terraform/README.md`](terraform/README.md) | whoever provisions the host | resource graph, ingress contract, AWS/GCP porting tables |
+
+---
+
 ## 🚀 Quick start
 
 Requirements: Docker 24+ with Compose v2 and a free loopback port `8300`.
@@ -273,6 +284,7 @@ Scanning the 10-file fixture set: **20 findings** (4 critical, 8 high, 7 medium,
 | IaC formatting | `tofu fmt -recursive -check` clean |
 | IaC validation | `tofu validate` → `Success! The configuration is valid.` |
 | OCI plan | **6 to add, 0 to change, 0 to destroy** against the real tenancy (nothing applied) |
+| Documentation | `AGENT_GUIDE.md` and `MANUAL_PREREQS.md` present, fences balanced, every referenced path exists |
 
 Reproduce:
 
@@ -308,7 +320,7 @@ Transcript: `docs/stage-1-verification.txt`.
 | --- | --- | --- |
 | 1 | Scaffold, engine, policy, hardened container, verification | ✅ complete |
 | 2 | OpenTofu OCI network + compute, validated plan (6 to add) | ✅ complete |
-| 3 | Agent guide, operator prerequisites, policy authoring playbook | ⬜ |
+| 3 | Agent guide and operator prerequisites | ✅ complete |
 | 4 | Real-corpus benchmark, SARIF export, webhook notifications | ⬜ |
 | 5 | Cloud deployment verification with trial credits | ⬜ |
 | 6 | Teardown and zero-cost proof | ⬜ |
