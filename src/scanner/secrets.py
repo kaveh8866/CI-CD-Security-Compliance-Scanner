@@ -93,9 +93,13 @@ _SIGNATURE_RULES: tuple[tuple[str, str, str, re.Pattern[str], str], ...] = (
     ),
 )
 
+# `\b` is wrong on both edges: it does not fire between `_` and a keyword, so
+# `SERVICE_PASSWORD=` and `db_password=` were silently skipped. Explicit
+# non-alphanumeric lookarounds catch underscore/dash-prefixed names while still
+# ignoring keywords embedded in larger identifiers.
 _GENERIC_ASSIGNMENT = re.compile(
-    r"(?i)\b(api[_-]?key|apikey|secret[_-]?key|client[_-]?secret|access[_-]?token|"
-    r"auth[_-]?token|password|passwd|pwd|private[_-]?key)\b\s*[:=]\s*[\"']?([^\s\"'#,;]{12,})"
+    r"(?i)(?<![A-Za-z0-9])(api[_-]?key|apikey|secret[_-]?key|client[_-]?secret|access[_-]?token|"
+    r"auth[_-]?token|password|passwd|pwd|private[_-]?key)(?![A-Za-z0-9])\s*[:=]\s*[\"']?([^\s\"'#,;]{12,})"
 )
 
 _TEXT_EXTENSIONS: tuple[str, ...] = (

@@ -48,7 +48,7 @@ These hold for every action, including exploratory ones.
 | `configs/policies/compliance.toml` | baseline policy: 10 controls, `fail_on = high` |
 | `configs/advisories/advisories.json` | offline advisory catalogue (pypi + npm) |
 | `configs/samples/` | intentionally insecure fixtures — safe to scan, never fix them |
-| `tests/` | 65 unit tests and a 25-assertion smoke contract |
+| `tests/` | 74 unit tests and a 29-assertion smoke contract |
 | `terraform/` | OCI network + compute modules; validated, not applied |
 | `docker/docker-compose.yml` | hardened runtime composition (service `scanner`) |
 
@@ -142,12 +142,31 @@ docker exec cg-scanner python -m scanner scan /scan
 docker exec cg-scanner python -m scanner validate-policy /etc/scanner/policies/compliance.toml
 ```
 
-### 4.4 Expected result for the bundled fixtures
+### 4.4 Structured output: JSON and SARIF
+
+```bash
+# JSON report on disk (the command prints a one-line summary and exits 1)
+PYTHONPATH=src python -m scanner scan configs/samples --format json --output /tmp/report.json
+
+# SARIF 2.1.0 for GitHub code scanning / GitLab SAST
+PYTHONPATH=src python -m scanner scan configs/samples --format sarif --output /tmp/report.sarif
+
+docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges \
+  -v "$PWD/configs:/scan:ro" -v "$PWD/docs/stage-4-evidence:/reports" \
+  cloudguard/scanner:local scan /scan --format sarif --output /reports/report.sarif
+```
+
+SARIF mapping: `critical`/`high` → `error`, `medium` → `warning`, `low`/`info` →
+`note`. Each result carries a physical location, a rule index into the driver's
+rule list, and `partialFingerprints["cloudguardFinding/v1"]` as a `sha256:` digest,
+so alerts survive re-scans without carrying a credential.
+
+### 4.5 Expected result for the bundled fixtures
 
 | Metric | Value |
 | --- | --- |
 | Files scanned | 10 |
-| Findings | 20 (4 critical, 8 high, 7 medium, 1 low) |
+| Findings | 21 (4 critical, 9 high, 7 medium, 1 low) |
 | Controls failing | 9 of 10 |
 | Latency | ~115 ms |
 | Peak RSS | ~25 MiB |
@@ -285,10 +304,10 @@ Then add `CG-VULN-006` coverage to control `CG-CI-009` only if the wildcard
 Run both before any commit that changes engine behaviour:
 
 ```bash
-# 65 unit tests
+# 74 unit tests
 PYTHONPATH=src python -m unittest discover -s tests
 
-# 25 assertions against the running container
+# 29 assertions against the running container
 BASE_URL=http://127.0.0.1:8300 bash tests/smoke.sh
 ```
 
@@ -386,10 +405,11 @@ not log parsing.
 - **Final production verification and testing certification are performed
   strictly on Oracle Cloud Infrastructure (OCI) using trial credits.** AWS and
   GCP are supported ports, never certified targets.
-- Stage 3 status: local container verified (65 unit + 25 smoke assertions) and
-  OCI IaC validated (`tofu validate`, plan 6 to add). No cloud deployment has
-  executed yet, so do not describe the stack as live, publicly reachable or
-  cloud-verified until the deployment stage records that evidence.
+- Stage 4 status: local stack verified (74 unit + 29 smoke assertions, JSON and
+  SARIF output, gate enforcement, value-free audit logs) and OCI IaC validated
+  (`tofu validate`, plan 6 to add). No cloud deployment has executed yet, so do
+  not describe the stack as live, publicly reachable or cloud-verified until the
+  deployment stage records that evidence.
 - What is already proven: the engine's behaviour, the container's runtime
   posture, the Git boundary and the OCI resource graph. What is not: anything
   that requires a running host in the cloud.

@@ -10,6 +10,7 @@ from pathlib import Path
 from . import __version__, compliance
 from .engine import scan_path
 from .models import SEVERITIES
+from .sarif import to_sarif
 
 _SEVERITY_TAG = {
     "critical": "CRIT",
@@ -64,10 +65,26 @@ def _command_scan(args: argparse.Namespace) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 2
 
-    if args.json:
-        print(json.dumps(report.to_dict(), indent=2))
+    output_format = "json" if getattr(args, "json", False) else args.format
+    if output_format == "json":
+        rendered = json.dumps(report.to_dict(), indent=2)
+    elif output_format == "sarif":
+        rendered = json.dumps(to_sarif(report), indent=2)
     else:
-        print(_render(report))
+        rendered = _render(report)
+
+    if args.output:
+        try:
+            Path(args.output).write_text(rendered + "\n", encoding="utf-8")
+        except OSError as error:
+            print(f"error: cannot write {args.output}: {error.strerror}", file=sys.stderr)
+            return 2
+        print(
+            f"report {args.output}: {report.files_scanned} files, "
+            f"{len(report.findings)} findings, {len(report.failed_controls())}/{len(report.controls)} controls failing"
+        )
+    else:
+        print(rendered)
 
     exit_code = report.exit_code(args.fail_on or policy.fail_on)
     if exit_code:
@@ -102,7 +119,14 @@ def build_parser() -> argparse.ArgumentParser:
     scan = subcommands.add_parser("scan", help="scan a directory tree")
     scan.add_argument("path", help="directory to scan")
     scan.add_argument("--policy", default=None, help="policy TOML (default: bundled baseline)")
-    scan.add_argument("--json", action="store_true", help="emit the machine-readable report")
+    scan.add_argument(
+        "--format",
+        choices=("table", "json", "sarif"),
+        default="table",
+        help="output format (default: table)",
+    )
+    scan.add_argument("--json", action="store_true", help=argparse.SUPPRESS)  # legacy alias for --format json
+    scan.add_argument("--output", default=None, help="write the report to a file instead of stdout")
     scan.add_argument("--fail-on", choices=SEVERITIES, default=None, help="override the policy threshold")
     scan.set_defaults(func=_command_scan)
 

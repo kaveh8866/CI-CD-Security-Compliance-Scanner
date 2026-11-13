@@ -1,0 +1,185 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 4 — Local Testing & Verification
+Evidence transcript
+Date: 2026-11-13
+Host: Windows 11 + Git Bash, Docker 29.9 / Compose v5.7
+Image: cloudguard/scanner:local (rebuilt from this commit)
+================================================================================
+
+SCOPE EXECUTED
+--------------
+1. Stack started detached with Compose; health and policy engine verified.
+2. Policy and schema documents loaded and validated.
+3. Fixture scans over HTTP, host CLI and container CLI; JSON and SARIF reports.
+4. Gate enforcement exercised at two thresholds plus a clean tree.
+5. Container logs inspected: structured events, retention across restart, and a
+   redaction proof.
+6. Evidence artifacts written to docs/stage-4-evidence/ (value-free).
+
+NOT EXECUTED
+------------
+- No OCI deployment: no apply, no host, no public IP. This is local verification
+  only; cloud verification is the deployment stage.
+
+--------------------------------------------------------------------------------
+1. STACK
+--------------------------------------------------------------------------------
+$ docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+  Container cg-scanner Started
+
+$ curl -s http://127.0.0.1:8300/healthz
+  {"status":"ok","service":"cicd-security-scanner","version":"0.1.0",
+   "policy":"CloudGuard CI/CD Baseline","policy_version":"1.0.0","controls":10,
+   "roots":["/scan","/etc/scanner"]}
+
+$ docker compose ... ps
+  cg-scanner  Up (healthy)
+
+--------------------------------------------------------------------------------
+2. POLICY AND SCHEMA LOADING
+--------------------------------------------------------------------------------
+$ PYTHONPATH=src python -m scanner validate-policy configs/policies/compliance.toml
+  valid   CloudGuard CI/CD Baseline v1.0.0 (10 controls, fail_on=high)
+    CG-CI-001    high     Third-party actions are pinned to commit SHAs
+    CG-CI-002    high     Privileged workflow triggers are constrained
+    ... (10 controls)
+
+Schema/advisory documents parse as JSON:
+  configs/schema/policy.schema.json      valid
+  configs/schema/finding.schema.json     valid
+  configs/advisories/advisories.json     valid
+
+$ curl -s http://127.0.0.1:8300/policy
+  CloudGuard CI/CD Baseline v1.0.0 | controls=10 | fail_on=high
+  ignore=['.git/**', 'tests/fixtures/**', '**/__pycache__/**', 'data/**']
+
+The policy engine initialised at container start: /healthz reports the policy
+name/version and control count, so a malformed policy would have failed startup
+with exit code 2 instead of serving.
+
+--------------------------------------------------------------------------------
+3. SCAN RESULTS — bundled fixtures, 10 files
+--------------------------------------------------------------------------------
+HTTP POST /scan {"path":"/scan"}
+
+  files:      10
+  findings:   21
+  severity:   critical=4, high=9, medium=7, low=1, info=0
+  categories: secret=2, pipeline=12, dependency=7
+  controls:   9 of 10 failing
+    CG-CI-001 CG-CI-002 CG-CI-003 CG-CI-004 CG-CI-005
+    CG-CI-006 CG-CI-007 CG-CI-008 CG-CI-009
+  passing:    CG-CI-010 (pipeline definitions parse)
+
+Dependency findings:
+  CG-DEP-001  unpinned requirement (flask)
+  CG-DEP-003  unpinned npm dependency (left-pad "*")
+  CG-VULN-001 requests 2.28.0 < 2.31.0
+  CG-VULN-002 urllib3 2.0.6 < 2.0.7
+  CG-VULN-003 pyyaml 5.3.1 < 5.4
+  CG-VULN-004 lodash 4.17.15 < 4.17.21
+  CG-VULN-005 minimist 1.2.0 < 1.2.6
+
+Secret findings (values never present):
+  CG-SEC-010  samples/leaky.env.example:4  (AUTH_TOKEN)
+  CG-SEC-010  samples/leaky.env.example:5  (SERVICE_PASSWORD)
+
+Post-scan assertion: the fixture credential values are absent from the JSON
+report (checked programmatically: False).
+
+DEFECT FOUND AND FIXED DURING THIS STAGE
+- `SERVICE_PASSWORD=` was not flagged. The generic assignment rule used `\b` on
+  both sides of the keyword; there is no word boundary between `_` and
+  `PASSWORD`, so underscore-prefixed names were skipped. The rule now uses
+  explicit non-alphanumeric lookarounds, and two regression tests cover
+  `SERVICE_PASSWORD` / `db_password` detection and rejection of keywords embedded
+  in larger identifiers (`mypasswordcontext`). Unit tests: 72 → 74.
+
+--------------------------------------------------------------------------------
+4. STRUCTURED OUTPUT
+--------------------------------------------------------------------------------
+$ docker run --rm ... cloudguard/scanner:local scan /scan \
+    --format json --output /reports/report.json
+  report /reports/report.json: 10 files, 21 findings, 9/10 controls failing
+  exit: 1
+
+$ docker run --rm ... cloudguard/scanner:local scan /scan \
+    --format sarif --output /reports/report.sarif
+  report /reports/report.sarif: 10 files, 21 findings, 9/10 controls failing
+  exit: 1
+
+SARIF inspection:
+  version:    2.1.0
+  rules:      19
+  results:    21
+  levels:     error=13, warning=7, note=1
+  locations:  samples/gitlab/.gitlab-ci.yml, samples/leaky.env.example,
+              samples/node/package.json, samples/requirements-insecure.txt, ...
+  fingerprints: every result has partialFingerprints["cloudguardFinding/v1"]
+                matching ^sha256:[0-9a-f]{12}$
+
+Artifacts committed:
+  docs/stage-4-evidence/report.json    (13 KB, JSON report)
+  docs/stage-4-evidence/report.sarif   (33 KB, SARIF 2.1.0)
+
+--------------------------------------------------------------------------------
+5. GATE ENFORCEMENT
+--------------------------------------------------------------------------------
+$ python -m scanner scan configs/samples --fail-on high       -> exit 1
+$ python -m scanner scan configs/samples --fail-on critical   -> exit 1
+$ python -m scanner scan configs/schema  --fail-on low        -> exit 0
+
+The clean schema tree produces zero findings, so a low threshold still passes;
+the fixtures contain four critical findings (pull_request_target + secrets),
+so the critical threshold also fails as designed.
+
+--------------------------------------------------------------------------------
+6. AUDIT LOGS
+--------------------------------------------------------------------------------
+$ docker logs --since 20m cg-scanner | grep '"event":"scan"'
+  {"event":"scan","target":"/scan","files":10,"findings":21,
+   "critical":4,"high":9,"controls_failed":9}
+  (repeated once per scan request)
+
+$ docker logs cg-scanner | grep -c '<fixture credential value>'
+  0
+
+$ docker compose ... restart
+  after restart: ok controls=10
+  scan events retained: 3
+
+The audit trail is structured stdout with rotation (json-file, 5 MB × 2), not a
+file: the container root filesystem is read-only. Restarting the container keeps
+the log stream; no scan payload, message or credential is logged.
+
+--------------------------------------------------------------------------------
+7. TEST SUITE
+--------------------------------------------------------------------------------
+$ PYTHONPATH=src python -m unittest discover -s tests
+  Ran 74 tests in 0.806s
+  OK
+
+$ BASE_URL=http://127.0.0.1:8300 bash tests/smoke.sh
+  29 passed, 0 failed
+
+New in this stage: tests/test_sarif.py (7 tests covering shape, level mapping,
+rule indexing, locations, fingerprints, empty reports, redaction and the CLI
+file output) and three smoke assertions for SARIF emission.
+
+--------------------------------------------------------------------------------
+8. GIT BOUNDARY
+--------------------------------------------------------------------------------
+$ git check-ignore -q .env                                  -> ignored
+$ git check-ignore -q docs/stage-4-evidence/report.sarif    -> NOT ignored
+                                                              (explicit publish
+                                                               exception)
+Artifacts contain no credential: findings carry sha256 fingerprints only.
+
+================================================================================
+STAGE 4 RESULT: COMPLETE
+Local stack healthy; policy engine loaded 10 controls; 21 findings across 3
+categories; JSON + SARIF reports; gate fails at high/critical and passes clean
+input; audit logs value-free and retained across restart.
+No cloud deployment was performed.
+================================================================================

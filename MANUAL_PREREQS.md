@@ -199,6 +199,8 @@ Validate and test the gate:
 PYTHONPATH=src python -m scanner validate-policy configs/policies/compliance.toml
 PYTHONPATH=src python -m scanner scan configs/samples            # expect exit 1
 PYTHONPATH=src python -m scanner scan configs/schema             # expect exit 0
+PYTHONPATH=src python -m scanner scan configs/samples \
+  --format sarif --output /tmp/report.sarif                      # SARIF 2.1.0 for CI
 ```
 
 - [ ] `validate-policy` prints 10 controls.
@@ -344,7 +346,7 @@ approved.
 - [ ] `.env` present locally, mode `600`, gitignored, no real secret in any
       tracked file.
 - [ ] Policy reviewed; `fail_on` chosen; `validate-policy` passes.
-- [ ] Local stack healthy and `smoke.sh` reports 25/25.
+- [ ] Local stack healthy and `smoke.sh` reports 29/29.
 - [ ] `tofu validate` passes and `plan` is exactly 6 to add.
 - [ ] Ingress sources are your CIDRs only; no `0.0.0.0/0`.
 - [ ] You accept that `tofu destroy` later removes the VCN, subnet, security
@@ -364,7 +366,7 @@ approved.
    otherwise keep loopback and tunnel.
 5. `docker compose --env-file .env -f docker/docker-compose.yml up -d --build`.
 6. `curl -s http://127.0.0.1:8300/healthz` — expect `{"status":"ok",...}`.
-7. Run the live drill: scan the bundled fixtures, confirm 20 findings and a
+7. Run the live drill: scan the bundled fixtures, confirm 21 findings and a
    failing gate, then scan a clean tree and confirm exit `0`.
 8. Record the evidence (IPs, timings, counts, log excerpts with values removed)
    in `docs/` and commit it.

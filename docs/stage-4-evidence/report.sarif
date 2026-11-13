@@ -1,0 +1,1068 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "cloudguard-scanner",
+          "informationUri": "https://github.com/kaveh8866/CI-CD-Security-Compliance-Scanner",
+          "version": "0.1.0",
+          "rules": [
+            {
+              "id": "CG-VULN-005",
+              "name": "Prototype pollution",
+              "shortDescription": {
+                "text": "Prototype pollution"
+              },
+              "fullDescription": {
+                "text": "Upgrade minimist to 1.2.6 or later."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "critical",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-VULN-003",
+              "name": "Arbitrary code execution through full_load",
+              "shortDescription": {
+                "text": "Arbitrary code execution through full_load"
+              },
+              "fullDescription": {
+                "text": "Upgrade PyYAML to 5.4 or later and parse untrusted input with safe_load."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "critical",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-002",
+              "name": "pull_request_target with untrusted checkout",
+              "shortDescription": {
+                "text": "pull_request_target with untrusted checkout"
+              },
+              "fullDescription": {
+                "text": "Run untrusted code under 'pull_request'; keep pull_request_target for label-only workflows."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "critical",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-004",
+              "name": "Script injection through event context",
+              "shortDescription": {
+                "text": "Script injection through event context"
+              },
+              "fullDescription": {
+                "text": "Move the value into an environment variable and reference it as \"$VAR\"."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "critical",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-022",
+              "name": "CI job token printed",
+              "shortDescription": {
+                "text": "CI job token printed"
+              },
+              "fullDescription": {
+                "text": "Remove the echo and mark the variable masked in the project settings."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-SEC-010",
+              "name": "Hard-coded credential assignment",
+              "shortDescription": {
+                "text": "Hard-coded credential assignment"
+              },
+              "fullDescription": {
+                "text": "Move the value into a CI secret and reference it by name at runtime."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "secret",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "secret"
+                ]
+              }
+            },
+            {
+              "id": "CG-VULN-004",
+              "name": "Command injection in template",
+              "shortDescription": {
+                "text": "Command injection in template"
+              },
+              "fullDescription": {
+                "text": "Upgrade lodash to 4.17.21 or later."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-VULN-001",
+              "name": "Proxy-Authorization header leak on redirect",
+              "shortDescription": {
+                "text": "Proxy-Authorization header leak on redirect"
+              },
+              "fullDescription": {
+                "text": "Upgrade requests to 2.31.0 or later."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-VULN-002",
+              "name": "Request body not stripped on cross-origin redirect",
+              "shortDescription": {
+                "text": "Request body not stripped on cross-origin redirect"
+              },
+              "fullDescription": {
+                "text": "Upgrade urllib3 to 2.0.7 or later."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-001",
+              "name": "Unpinned third-party action",
+              "shortDescription": {
+                "text": "Unpinned third-party action"
+              },
+              "fullDescription": {
+                "text": "Pin the action to a full 40-character commit SHA; refresh it deliberately."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-003",
+              "name": "Secret interpolated into shell output",
+              "shortDescription": {
+                "text": "Secret interpolated into shell output"
+              },
+              "fullDescription": {
+                "text": "Pass secrets as environment variables and never echo them; mask them in logs."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "high",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-020",
+              "name": "Floating container image",
+              "shortDescription": {
+                "text": "Floating container image"
+              },
+              "fullDescription": {
+                "text": "Pin the image by digest (@sha256:\u2026) so a rebuild cannot introduce a new base."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-021",
+              "name": "Remote script piped into a shell",
+              "shortDescription": {
+                "text": "Remote script piped into a shell"
+              },
+              "fullDescription": {
+                "text": "Verify a checksum or signature before executing downloaded scripts."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-023",
+              "name": "Commit metadata interpolated into a script",
+              "shortDescription": {
+                "text": "Commit metadata interpolated into a script"
+              },
+              "fullDescription": {
+                "text": "Quote the value or read it from a file instead of interpolating it into script lines."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-DEP-003",
+              "name": "Unpinned npm dependency",
+              "shortDescription": {
+                "text": "Unpinned npm dependency"
+              },
+              "fullDescription": {
+                "text": "Pin left-pad to an exact version; commit the lockfile."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-DEP-001",
+              "name": "Unpinned dependency",
+              "shortDescription": {
+                "text": "Unpinned dependency"
+              },
+              "fullDescription": {
+                "text": "Pin flask to a reviewed version (==x.y.z) and update it deliberately."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "dependency",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "dependency"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-006",
+              "name": "Workflow grants write-all permissions",
+              "shortDescription": {
+                "text": "Workflow grants write-all permissions"
+              },
+              "fullDescription": {
+                "text": "Declare the minimal permissions per job, starting from 'contents: read'."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-005",
+              "name": "Remote script piped into a shell",
+              "shortDescription": {
+                "text": "Remote script piped into a shell"
+              },
+              "fullDescription": {
+                "text": "Download, verify a checksum or signature, then execute the pinned artefact."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "medium",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            },
+            {
+              "id": "CG-PIPE-007",
+              "name": "Unreviewed workflow trigger",
+              "shortDescription": {
+                "text": "Unreviewed workflow trigger"
+              },
+              "fullDescription": {
+                "text": "Confirm the trigger is required; document the threat model for privileged events."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              },
+              "properties": {
+                "category": "pipeline",
+                "severity": "low",
+                "tags": [
+                  "security",
+                  "ci-cd",
+                  "pipeline"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CG-VULN-005",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "minimist 1.2.0 is below the fixed version 1.2.6 (CVE-2021-44906): minimist is vulnerable to prototype pollution through crafted arguments.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/node/package.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:8f28812f950d"
+          },
+          "properties": {
+            "severity": "critical",
+            "category": "dependency",
+            "remediation": "Upgrade minimist to 1.2.6 or later."
+          }
+        },
+        {
+          "ruleId": "CG-VULN-003",
+          "ruleIndex": 1,
+          "level": "error",
+          "message": {
+            "text": "pyyaml 5.3.1 is below the fixed version 5.4 (CVE-2020-14343): PyYAML's full_load resolves arbitrary Python objects from untrusted documents.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/requirements-insecure.txt",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:2f68e6ccb12d"
+          },
+          "properties": {
+            "severity": "critical",
+            "category": "dependency",
+            "remediation": "Upgrade PyYAML to 5.4 or later and parse untrusted input with safe_load."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-002",
+          "ruleIndex": 2,
+          "level": "error",
+          "message": {
+            "text": "The privileged pull_request_target trigger is combined with a checkout of PR head code."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:62db183caafd"
+          },
+          "properties": {
+            "severity": "critical",
+            "category": "pipeline",
+            "remediation": "Run untrusted code under 'pull_request'; keep pull_request_target for label-only workflows."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-004",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "Untrusted event data (${{ github.event.pull_request.title }}) is interpolated directly into a run step."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 23
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:429d7d0e689c"
+          },
+          "properties": {
+            "severity": "critical",
+            "category": "pipeline",
+            "remediation": "Move the value into an environment variable and reference it as \"$VAR\"."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-022",
+          "ruleIndex": 4,
+          "level": "error",
+          "message": {
+            "text": "CI_JOB_TOKEN is echoed, exposing it to anyone who can read job logs."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/gitlab/.gitlab-ci.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 13
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:91e3aa5472dd"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "pipeline",
+            "remediation": "Remove the echo and mark the variable masked in the project settings."
+          }
+        },
+        {
+          "ruleId": "CG-SEC-010",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "Assignment to 'AUTH_TOKEN' carries a high-entropy literal (sha256:0aa5fa9fabfd); value redacted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/leaky.env.example",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:0aa5fa9fabfd"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "secret",
+            "remediation": "Move the value into a CI secret and reference it by name at runtime."
+          }
+        },
+        {
+          "ruleId": "CG-SEC-010",
+          "ruleIndex": 5,
+          "level": "error",
+          "message": {
+            "text": "Assignment to 'PASSWORD' carries a high-entropy literal (sha256:f6cca2e65989); value redacted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/leaky.env.example",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:f6cca2e65989"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "secret",
+            "remediation": "Move the value into a CI secret and reference it by name at runtime."
+          }
+        },
+        {
+          "ruleId": "CG-VULN-004",
+          "ruleIndex": 6,
+          "level": "error",
+          "message": {
+            "text": "lodash 4.17.15 is below the fixed version 4.17.21 (GHSA-35jh-r3h4-6jhm): lodash template allows code injection through crafted template options.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/node/package.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 7
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:6d0ba30b5bd9"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "dependency",
+            "remediation": "Upgrade lodash to 4.17.21 or later."
+          }
+        },
+        {
+          "ruleId": "CG-VULN-001",
+          "ruleIndex": 7,
+          "level": "error",
+          "message": {
+            "text": "requests 2.28.0 is below the fixed version 2.31.0 (CVE-2023-32681): requests forwards Proxy-Authorization to a redirected destination over HTTPS.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/requirements-insecure.txt",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 2
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:1c9701ebe394"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "dependency",
+            "remediation": "Upgrade requests to 2.31.0 or later."
+          }
+        },
+        {
+          "ruleId": "CG-VULN-002",
+          "ruleIndex": 8,
+          "level": "error",
+          "message": {
+            "text": "urllib3 2.0.6 is below the fixed version 2.0.7 (CVE-2023-45803): urllib3 can forward a request body to a redirected host when a 303 response is returned.."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/requirements-insecure.txt",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 3
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:0d6a743fd164"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "dependency",
+            "remediation": "Upgrade urllib3 to 2.0.7 or later."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-001",
+          "ruleIndex": 9,
+          "level": "error",
+          "message": {
+            "text": "Action 'actions/checkout@v4' is referenced by tag or branch, not a commit SHA."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 14
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:cfb280fd9a1a"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "pipeline",
+            "remediation": "Pin the action to a full 40-character commit SHA; refresh it deliberately."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-001",
+          "ruleIndex": 9,
+          "level": "error",
+          "message": {
+            "text": "Action 'example-org/third-party-action@main' is referenced by tag or branch, not a commit SHA."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 17
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:84dd79132c58"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "pipeline",
+            "remediation": "Pin the action to a full 40-character commit SHA; refresh it deliberately."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-003",
+          "ruleIndex": 10,
+          "level": "error",
+          "message": {
+            "text": "${{ secrets.DEPLOY_TOKEN }} is expanded into a shell command that can print it."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 19
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:cc7c8ecf8d9a"
+          },
+          "properties": {
+            "severity": "high",
+            "category": "pipeline",
+            "remediation": "Pass secrets as environment variables and never echo them; mask them in logs."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-020",
+          "ruleIndex": 11,
+          "level": "warning",
+          "message": {
+            "text": "Image 'python:latest' is not pinned to an immutable digest."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/gitlab/.gitlab-ci.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 6
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:01c5431d6301"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "pipeline",
+            "remediation": "Pin the image by digest (@sha256:\u2026) so a rebuild cannot introduce a new base."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-021",
+          "ruleIndex": 12,
+          "level": "warning",
+          "message": {
+            "text": "A network download is executed by a shell without integrity verification."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/gitlab/.gitlab-ci.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:a746a9473135"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "pipeline",
+            "remediation": "Verify a checksum or signature before executing downloaded scripts."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-023",
+          "ruleIndex": 13,
+          "level": "warning",
+          "message": {
+            "text": "Untrusted commit metadata (${CI_COMMIT_MESSAGE}) is expanded into a shell command."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/gitlab/.gitlab-ci.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 14
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:fe8e0f6d1ddf"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "pipeline",
+            "remediation": "Quote the value or read it from a file instead of interpolating it into script lines."
+          }
+        },
+        {
+          "ruleId": "CG-DEP-003",
+          "ruleIndex": 14,
+          "level": "warning",
+          "message": {
+            "text": "left-pad uses '*', which can resolve to a different build on every install."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/node/package.json",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 11
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:c25a35c2b85a"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "dependency",
+            "remediation": "Pin left-pad to an exact version; commit the lockfile."
+          }
+        },
+        {
+          "ruleId": "CG-DEP-001",
+          "ruleIndex": 15,
+          "level": "warning",
+          "message": {
+            "text": "flask is declared without an exact pin, so builds are not reproducible."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/requirements-insecure.txt",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:a1e48fdfa4b3"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "dependency",
+            "remediation": "Pin flask to a reviewed version (==x.y.z) and update it deliberately."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-006",
+          "ruleIndex": 16,
+          "level": "warning",
+          "message": {
+            "text": "The workflow token can write every scope, so any injected step inherits that power."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:afa4fec4be00"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "pipeline",
+            "remediation": "Declare the minimal permissions per job, starting from 'contents: read'."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-005",
+          "ruleIndex": 17,
+          "level": "warning",
+          "message": {
+            "text": "A network download is executed by a shell without integrity verification."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 21
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:bc5fe19c2999"
+          },
+          "properties": {
+            "severity": "medium",
+            "category": "pipeline",
+            "remediation": "Download, verify a checksum or signature, then execute the pinned artefact."
+          }
+        },
+        {
+          "ruleId": "CG-PIPE-007",
+          "ruleIndex": 18,
+          "level": "note",
+          "message": {
+            "text": "Trigger(s) outside the approved baseline: pull_request_target."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "samples/workflows/github-actions-insecure.yml",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 4
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "cloudguardFinding/v1": "sha256:40fa86507ecc"
+          },
+          "properties": {
+            "severity": "low",
+            "category": "pipeline",
+            "remediation": "Confirm the trigger is required; document the threat model for privileged events."
+          }
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "properties": {
+            "target": "/scan",
+            "policy": "CloudGuard CI/CD Baseline",
+            "policyVersion": "1.0.0",
+            "filesScanned": 10,
+            "controlsFailed": 9
+          }
+        }
+      ],
+      "properties": {
+        "summary": {
+          "info": 0,
+          "low": 1,
+          "medium": 7,
+          "high": 9,
+          "critical": 4
+        },
+        "generatedAt": "2026-11-13T18:33:53Z"
+      }
+    }
+  ]
+}

@@ -34,7 +34,7 @@ the documentation pair (README.md + AGENT_GUIDE.md).
  12  Certification scope: OCI-only, trial credits, what is and is not proven
 
 Every command in sections 3–8 was previously executed in Stages 1–2; expected
-outputs match those transcripts (65 unit tests, 25 smoke assertions, 20 findings,
+outputs match those transcripts (counts updated in Stage 4: 74 unit tests, 29 smoke assertions, 21 findings,
 tofu validate success, plan 6 to add).
 
 --------------------------------------------------------------------------------

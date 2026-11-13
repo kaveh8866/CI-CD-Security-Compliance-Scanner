@@ -127,6 +127,26 @@ clean = subprocess.run(
 )
 check("CLI scan passes clean input", clean.returncode == 0, f"rc={clean.returncode}")
 
+print("== SARIF contract ==")
+import tempfile
+
+with tempfile.TemporaryDirectory() as tmp:
+    sarif_path = os.path.join(tmp, "report.sarif")
+    sarif = subprocess.run(
+        [sys.executable, "-m", "scanner", "scan", os.path.join(root, "configs", "samples"),
+         "--format", "sarif", "--output", sarif_path],
+        env=env, capture_output=True, text=True,
+    )
+    check("CLI emits SARIF and gates", sarif.returncode == 1, f"rc={sarif.returncode}")
+    try:
+        payload = json.loads(open(sarif_path, encoding="utf-8").read())
+    except (OSError, json.JSONDecodeError):
+        payload = {}
+    check("SARIF version is 2.1.0", payload.get("version") == "2.1.0", str(payload.get("version")))
+    results = payload.get("runs", [{}])[0].get("results", [])
+    check("SARIF carries findings", len(results) >= 5, str(len(results)))
+    check("SARIF is value-free", "Zk8Qm2Lp7Rt4Vb9Nx" not in json.dumps(payload))
+
 print(f"\n{passed} passed, {len(failed)} failed")
 if failed:
     print("failed: " + ", ".join(failed), file=sys.stderr)

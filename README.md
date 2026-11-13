@@ -3,9 +3,9 @@
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
 ![PyYAML](https://img.shields.io/badge/deps-PyYAML%206.0.2-informational)
 ![Docker](https://img.shields.io/badge/Docker-read--only%20%2B%20cap__drop%20ALL-2496ED?logo=docker&logoColor=white)
-![Tests](https://img.shields.io/badge/unit-65%20passing-brightgreen)
-![Smoke](https://img.shields.io/badge/smoke-25%2F25%20passing-brightgreen)
-![Stage](https://img.shields.io/badge/stage-2%20%C2%B7%20IaC-blue)
+![Tests](https://img.shields.io/badge/unit-74%20passing-brightgreen)
+![Smoke](https://img.shields.io/badge/smoke-29%2F29%20passing-brightgreen)
+![Stage](https://img.shields.io/badge/stage-4%20%C2%B7%20local%20verification-blue)
 ![OpenTofu](https://img.shields.io/badge/IaC-OpenTofu%201.13%20validated-844FBA)
 
 A containerized scanning engine that inspects CI/CD pipeline definitions, flags
@@ -16,11 +16,13 @@ It is deliberately small: one service, one TOML policy, one JSON advisory
 catalogue, about 1,200 lines of Python, and a report format that never contains
 the secret it found.
 
-**Stage 2 status:** the scanner runs locally, and the OCI infrastructure that
-hosts it is written in OpenTofu: VCN, internet gateway, public subnet, a
-22/8300-only security list and an Always Free A1.Flex instance. `tofu validate`
-passes and a real plan reports **6 to add**; nothing has been applied yet, so no
-cloud resource exists or bills today.
+**Stage 4 status:** the stack has been verified end to end locally — 74 unit
+tests, 29 smoke assertions, JSON and SARIF exports, gate failures at the
+configured threshold, and value-free structured audit logs. The OCI
+infrastructure is written in OpenTofu (VCN, internet gateway, public subnet, a
+22/8300-only security list, Always Free A1.Flex instance); `tofu validate` passes
+and a real plan reports **6 to add**. Nothing has been applied, so no cloud
+resource exists or bills today.
 
 ---
 
@@ -31,7 +33,7 @@ cloud resource exists or bills today.
 | **Problem** | Pipeline definitions are code nobody reviews for privilege, and a leaked token in a workflow is a production incident waiting for a clone |
 | **Approach** | Static analysis of workflow YAML, dependency manifests and file content, evaluated against a declarative policy that produces a pass/fail gate |
 | **Coverage today** | GitHub Actions, GitLab CI, `requirements.txt`, `package.json`, credential signatures, policy evaluation |
-| **Output** | Value-free JSON (CLI and HTTP) with per-control PASS/FAIL and severity counts |
+| **Output** | Value-free JSON (CLI and HTTP), SARIF 2.1.0 for code scanning, per-control PASS/FAIL and severity counts |
 | **Footprint** | 181 MB image, 19 MiB idle RSS, 128 MiB / 0.25 CPU cap, single container |
 
 ### How a scan flows
@@ -100,7 +102,11 @@ PYTHONPATH=src python -m scanner scan configs/samples
 Against a real checkout, with JSON output for a CI job:
 
 ```bash
-PYTHONPATH=src python -m scanner scan /path/to/repo --json > report.json
+# JSON for a CI job
+PYTHONPATH=src python -m scanner scan /path/to/repo --format json --output report.json
+
+# SARIF 2.1.0 for GitHub code scanning / GitLab SAST
+PYTHONPATH=src python -m scanner scan /path/to/repo --format sarif --output report.sarif
 ```
 
 Validate a policy edit before it reaches the pipeline:
@@ -245,7 +251,7 @@ produce noise.
 │   ├── samples/                   intentionally insecure fixtures
 │   └── schema/                    policy and report JSON Schemas
 ├── terraform/                     OCI VCN + subnet + security list + A1.Flex host, modules/
-├── tests/                         65 unit tests + smoke.sh (25 assertions)
+├── tests/                         74 unit tests + smoke.sh (29 assertions)
 └── docs/                          stage evidence transcripts
 ```
 
@@ -266,7 +272,7 @@ Verified against the running container, not just declared:
 | Logs | `json-file`, `max-size=5m`, `max-file=2` |
 | Workspace mount | `/scan` and `/etc/scanner` read-only |
 
-Scanning the 10-file fixture set: **20 findings** (4 critical, 8 high, 7 medium,
+Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 1 low), **9 of 10 controls failing**, **114.6 ms**, in 24.5 MiB of memory.
 
 ---
@@ -275,8 +281,11 @@ Scanning the 10-file fixture set: **20 findings** (4 critical, 8 high, 7 medium,
 
 | Check | Result |
 | --- | --- |
-| Unit suite | **65/65** passing (`PYTHONPATH=src python -m unittest discover -s tests`) |
-| Smoke contract | **25/25** assertions against the running container |
+| Unit suite | **74/74** passing (`PYTHONPATH=src python -m unittest discover -s tests`) |
+| Smoke contract | **29/29** assertions against the running container |
+| SARIF export | 2.1.0 log, 19 rules, 21 results, `error`/`warning`/`note` levels, sha256 fingerprints |
+| Gate behaviour | exit `1` at `high` and `critical`; exit `0` on a clean tree |
+| Audit trail | structured scan events on stdout, retained across a container restart, zero credential values |
 | Policy validation | `validate-policy` accepts the baseline, rejects five malformed variants |
 | Path boundary | `/scan` allowed; project root, `/etc` and traversal attempts → `403` |
 | Redaction | No fixture credential value appears in any report or container log |
@@ -321,7 +330,7 @@ Transcript: `docs/stage-1-verification.txt`.
 | 1 | Scaffold, engine, policy, hardened container, verification | ✅ complete |
 | 2 | OpenTofu OCI network + compute, validated plan (6 to add) | ✅ complete |
 | 3 | Agent guide and operator prerequisites | ✅ complete |
-| 4 | Real-corpus benchmark, SARIF export, webhook notifications | ⬜ |
+| 4 | Local stack, policy loading, JSON/SARIF reports, gate and audit-log verification | ✅ complete |
 | 5 | Cloud deployment verification with trial credits | ⬜ |
 | 6 | Teardown and zero-cost proof | ⬜ |
 | 7 | Security audit, README hardening, cross-cloud cost model | ⬜ |

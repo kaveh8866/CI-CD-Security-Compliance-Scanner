@@ -60,6 +60,15 @@ class SignatureTests(unittest.TestCase):
         )
         self.assertEqual(scan_text("README.md", text), [])
 
+    def test_underscore_prefixed_assignments_detected(self) -> None:
+        text = 'SERVICE_PASSWORD=xR4tY7uP2aS9dF6g\ndb_password = "Kp8Lm2Nq7Rs4Tv9W"\n'
+        findings = scan_text("config.env", text)
+
+        self.assertEqual([finding.rule_id for finding in findings], ["CG-SEC-010", "CG-SEC-010"])
+
+    def test_keyword_inside_larger_identifier_is_not_a_match(self) -> None:
+        self.assertEqual(scan_text("notes.txt", 'mypasswordcontext = "Zk8Qm2Lp7Rt4Vb9Nx"'), [])
+
     def test_specific_rule_wins_over_generic(self) -> None:
         findings = scan_text("ci.yml", f'api_key: "{aws_key()}"\n')
         rule_ids = [finding.rule_id for finding in findings]
