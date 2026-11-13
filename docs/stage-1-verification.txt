@@ -1,0 +1,164 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 1 — Scaffold & CloudGuard Profiling
+Evidence transcript
+Date: 2026-11-13
+Host: Windows 11 + Git Bash, Docker 29.9 / Compose v5.7
+Python: 3.11.9 (host CLI), 3.12 (image)
+================================================================================
+
+SCOPE EXECUTED
+--------------
+1. Project tree: src/scanner, configs, docker, terraform (reserved), tests, docs.
+2. Scanner engine: secret signatures + entropy, GitHub/GitLab pipeline analysis,
+   requirements/package.json parsing with an offline advisory catalogue, TOML
+   policy evaluation, HTTP API and CLI.
+3. Hardened container: read-only rootfs, non-root 10001, cap_drop ALL,
+   no-new-privileges, pids/mem/cpu limits, bounded JSON logs.
+4. Zero-leak boundary: strict .gitignore, placeholder-only .env.example,
+   independent Git repository on `main`.
+5. CloudGuard metadata row prepared (status: indexed; certification after the
+   Stage 3 documentation deliverables).
+
+NOT EXECUTED IN THIS STAGE
+--------------------------
+- No OCI resources were created, applied or destroyed. terraform/ contains only
+  a README describing the Stage 2 plan.
+- No GitHub release, tag or push. The repository is local until the release
+  stage; the remote URL is configured.
+
+--------------------------------------------------------------------------------
+1. UNIT SUITE
+--------------------------------------------------------------------------------
+$ PYTHONPATH=src python -m unittest discover -s tests
+Ran 65 tests in 0.621s
+OK
+
+Modules covered: secrets (10), pipelines (12), deps (14), compliance (11),
+engine (11), api (10). Fixture credentials are assembled from fragments in the
+tests, so the test sources themselves contain no credential-shaped literal.
+
+--------------------------------------------------------------------------------
+2. SMOKE CONTRACT — against the running container
+--------------------------------------------------------------------------------
+$ BASE_URL=http://127.0.0.1:8300 bash tests/smoke.sh
+== service contract ==
+  PASS  healthz returns 200
+  PASS  healthz reports ok
+  PASS  healthz exposes policy version
+  PASS  healthz advertises >= 10 controls
+  PASS  policy endpoint returns 200
+  PASS  policy gate is high
+  PASS  policy exposes control CG-CI-007
+== scan contract ==
+  PASS  scan returns 200
+  PASS  scan reports findings
+  PASS  scan exit_code is 1
+  PASS  scan fails controls
+  PASS  unpinned action detected
+  PASS  insecure trigger detected
+  PASS  vulnerable dependency detected
+  PASS  hard-coded credential detected
+  PASS  no dependency feed error
+  PASS  report contains no credential value
+  PASS  evidence is a fingerprint
+== boundary contract ==
+  PASS  path outside roots forbidden
+  PASS  invalid threshold rejected
+  PASS  unknown route is 404
+== CLI contract ==
+  PASS  validate-policy succeeds
+  PASS  CLI scan gates on findings
+  PASS  CLI output names a control
+  PASS  CLI scan passes clean input
+
+25 passed, 0 failed
+
+The CLI portion runs on the host interpreter (3.11.9); the API portion runs
+against the container.
+
+--------------------------------------------------------------------------------
+3. CONTAINER POSTURE — docker inspect cg-scanner
+--------------------------------------------------------------------------------
+  read_only=true
+  cap_drop=[ALL]
+  security_opt=[no-new-privileges:true]
+  mem=134217728            (128 MiB)
+  nano_cpus=250000000      (0.25 CPU)
+  pids=128
+  user=10001:10001
+  log=json-file max-size=5m max-file=2
+
+Read-only rootfs enforcement:
+
+$ docker exec cg-scanner sh -c 'echo x > /app/probe'
+sh: 1: cannot create /app/probe: Read-only file system
+
+Idle footprint:
+
+$ docker stats cg-scanner --no-stream
+mem=19.19MiB / 128MiB   cpu=0.02%   pids=1
+
+--------------------------------------------------------------------------------
+4. SCAN MEASUREMENT — 10-file fixture set inside the container
+--------------------------------------------------------------------------------
+  files scanned:     10
+  findings:          20
+  severity mix:      critical=4, high=8, medium=7, low=1
+  controls failing:  9 of 10
+  scan latency:      114.6 ms
+  peak RSS:          24.5 MiB
+  image size:        181 MB
+
+Findings included:
+- CG-PIPE-001 unpinned action (actions/checkout@v4, third-party@main)
+- CG-PIPE-002 pull_request_target with PR-head checkout
+- CG-PIPE-003 secrets interpolated into a shell command
+- CG-PIPE-004 event context injected into run:
+- CG-PIPE-005 / CG-PIPE-021 curl piped into a shell
+- CG-PIPE-006 permissions: write-all
+- CG-PIPE-020 floating GitLab image
+- CG-PIPE-022 CI_JOB_TOKEN echoed
+- CG-VULN-001 requests 2.28.0 < 2.31.0
+- CG-VULN-003 pyyaml 5.3.1 < 5.4
+- CG-VULN-004 lodash 4.17.15 < 4.17.21
+- CG-VULN-005 minimist 1.2.0 < 1.2.6
+- CG-SEC-010 high-entropy literals in leaky.env.example
+
+--------------------------------------------------------------------------------
+5. REDACTION
+--------------------------------------------------------------------------------
+$ docker logs cg-scanner 2>&1 | grep -c "<fixture credential value>"
+0
+
+Every secret finding carries `evidence` of the form `sha256:<12 hex>`.
+The smoke suite asserts the literal fixture values never appear in a report.
+
+--------------------------------------------------------------------------------
+6. POLICY VALIDATION NEGATIVE TESTS
+--------------------------------------------------------------------------------
+Missing [policy] table        -> PolicyError: missing [policy] table
+Empty controls                -> PolicyError: at least one [[controls]] required
+Duplicate control id          -> PolicyError: declared twice
+Invalid severity              -> PolicyError: must be one of info..critical
+Missing policy file           -> PolicyError: policy file not readable: <path>
+
+--------------------------------------------------------------------------------
+7. GIT BOUNDARY
+--------------------------------------------------------------------------------
+$ git rev-parse --abbrev-ref HEAD
+main
+
+$ git check-ignore -v .env                  # ignored
+$ git check-ignore -v scan-results/x.db     # ignored
+$ git check-ignore -v deploy.pem            # ignored
+$ git ls-files | grep -E '\.env$|\.pem$|\.db$'   # no output
+
+Tracked credential artefacts: none. Only `.env.example` (placeholders) is
+tracked.
+
+================================================================================
+STAGE 1 RESULT: COMPLETE
+Services running locally: cg-scanner on 127.0.0.1:8300 (healthy)
+CloudGuard status: indexed (PORTABLE_CERTIFIED pending Stage 3 documentation)
+================================================================================

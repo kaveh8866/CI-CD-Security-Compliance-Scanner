@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cloudguard.local/schemas/scanner-report.schema.json",
+  "title": "CloudGuard scanner report",
+  "description": "Machine-readable output of `scanner scan --json` and POST /scan. `evidence` is a truncated SHA-256 fingerprint by contract: no field in this document may contain a credential value.",
+  "type": "object",
+  "required": ["target", "policy", "generated_at", "files_scanned", "summary", "controls", "findings"],
+  "additionalProperties": true,
+  "properties": {
+    "target": { "type": "string" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "files_scanned": { "type": "integer", "minimum": 0 },
+    "policy": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["info", "low", "medium", "high", "critical"],
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "controls_failed": { "type": "integer", "minimum": 0 },
+    "controls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "severity", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },
+          "description": { "type": "string" },
+          "remediation": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "fail"] },
+          "matched_findings": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rule_id", "title", "severity", "category", "file", "line", "message"],
+        "properties": {
+          "rule_id": { "type": "string", "pattern": "^CG-[A-Z]+-[0-9]+$" },
+          "title": { "type": "string" },
+          "severity": { "type": "string", "enum": ["info", "low", "medium", "high", "critical"] },
+          "category": { "type": "string", "enum": ["secret", "pipeline", "dependency"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer", "minimum": 0 },
+          "message": { "type": "string" },
+          "remediation": { "type": "string" },
+          "evidence": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{12}$",
+            "description": "Non-reversible fingerprint, never the matched value."
+          }
+        }
+      }
+    },
+    "errors": { "type": "array", "items": { "type": "string" } },
+    "exit_code": { "type": "integer", "enum": [0, 1] }
+  }
+}

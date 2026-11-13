@@ -1,0 +1,103 @@
+# =============================================================================
+# CloudGuard CI/CD baseline policy
+# =============================================================================
+# `fail_on` is the severity at which the scanner exits non-zero (or returns
+# exit_code 1 over HTTP). Controls group rule ids into the language auditors
+# use; wildcards are allowed (`CG-SEC-*`), and a control fails if any matching
+# finding survives the ignore list.
+#
+# Rule ids are stable API: add new ids, never renumber existing ones.
+
+[policy]
+name = "CloudGuard CI/CD Baseline"
+version = "1.0.0"
+fail_on = "high"
+
+# Paths excluded from the scan, matched against repo-relative POSIX paths.
+ignore = [
+  ".git/**",
+  "tests/fixtures/**",
+  "**/__pycache__/**",
+  "data/**",
+]
+
+# --- Pipeline supply chain ----------------------------------------------------
+[[controls]]
+id = "CG-CI-001"
+title = "Third-party actions are pinned to commit SHAs"
+severity = "high"
+rules = ["CG-PIPE-001"]
+description = "Tags and branches are mutable; a compromised upstream can repoint them at any time."
+remediation = "Pin every `uses:` entry to a 40-character commit SHA and refresh pins deliberately."
+
+[[controls]]
+id = "CG-CI-002"
+title = "Privileged workflow triggers are constrained"
+severity = "high"
+rules = ["CG-PIPE-002", "CG-PIPE-007"]
+description = "`pull_request_target` and other privileged events run with repository secrets available."
+remediation = "Use `pull_request` for untrusted code and document any privileged trigger."
+
+[[controls]]
+id = "CG-CI-003"
+title = "Secrets never reach shell output"
+severity = "high"
+rules = ["CG-PIPE-003", "CG-PIPE-004", "CG-PIPE-022", "CG-PIPE-023"]
+description = "Secret interpolation into `run:` steps and event-data injection both expose credentials."
+remediation = "Pass secrets and event data through environment variables and quote them."
+
+[[controls]]
+id = "CG-CI-004"
+title = "No unverified remote scripts"
+severity = "medium"
+rules = ["CG-PIPE-005", "CG-PIPE-021"]
+description = "`curl | bash` executes whatever the network returns at build time."
+remediation = "Download an artefact, verify its digest or signature, then execute it."
+
+[[controls]]
+id = "CG-CI-005"
+title = "Container images are immutable"
+severity = "medium"
+rules = ["CG-PIPE-020"]
+description = "Floating tags make builds non-reproducible and hide upstream changes."
+remediation = "Reference images by `@sha256:` digest."
+
+[[controls]]
+id = "CG-CI-006"
+title = "Workflow tokens follow least privilege"
+severity = "medium"
+rules = ["CG-PIPE-006"]
+description = "A `write-all` token turns any injected step into a repository takeover."
+remediation = "Declare the minimal per-job `permissions` block."
+
+[[controls]]
+id = "CG-CI-007"
+title = "No hard-coded credentials in tracked files"
+severity = "critical"
+rules = ["CG-SEC-*"]
+description = "Credential-shaped literals in a repository are compromised the moment the repo is cloned."
+remediation = "Revoke the credential, rotate it, and load the replacement from a secret store at runtime."
+
+[[controls]]
+id = "CG-CI-008"
+title = "Dependencies are pinned"
+severity = "medium"
+rules = ["CG-DEP-001", "CG-DEP-003"]
+description = "Unpinned requirements resolve differently on every build."
+remediation = "Pin exact versions and commit the lockfile."
+
+[[controls]]
+id = "CG-CI-009"
+title = "No known-vulnerable dependency versions"
+severity = "high"
+rules = ["CG-VULN-*"]
+description = "The offline advisory catalogue flags versions below a published fix."
+remediation = "Upgrade to the fixed version named in the finding and re-run the scan."
+
+[[controls]]
+id = "CG-CI-010"
+title = "Pipeline definitions parse"
+severity = "medium"
+rules = ["CG-PIPE-010"]
+description = "An unparseable workflow cannot be evaluated for any other control."
+remediation = "Fix the YAML syntax before merging."

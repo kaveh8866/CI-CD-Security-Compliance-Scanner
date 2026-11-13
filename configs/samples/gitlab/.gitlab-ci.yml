@@ -1,0 +1,19 @@
+# Intentionally insecure fixture — every construct below is meant to be flagged.
+# The job token is referenced, never printed with a real value.
+stages:
+  - build
+  - deploy
+
+image: python:latest
+
+build:
+  stage: build
+  script:
+    - curl -sSf https://example.com/get.sh | sh
+    - echo "$CI_JOB_TOKEN"
+    - echo "Building ${CI_COMMIT_MESSAGE}"
+
+deploy:
+  stage: deploy
+  script:
+    - echo "deploying"

@@ -1,0 +1,26 @@
+# Build context hygiene: the image only needs src/ and configs/.
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+venv
+__pycache__
+**/__pycache__
+tests
+docs
+data
+reports
+scan-results
+terraform
+docker
+*.md
+!src/**/*.md
+.terraform
+*.tfstate
+*.tfvars
+*.log
+*.db
+*.sqlite
+node_modules

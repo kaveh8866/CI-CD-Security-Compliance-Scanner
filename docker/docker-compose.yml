@@ -1,0 +1,83 @@
+# =============================================================================
+# CI/CD Security & Compliance Scanner — runtime composition
+# =============================================================================
+# Sized for a 1 OCPU / 1 GB Always Free instance: the scanner is capped at
+# 128 MiB and a quarter core, roughly ten times its idle footprint while still
+# leaving room for a burst over a large repository.
+#
+# The hardening flags are behavioural:
+#   read_only            immutable rootfs; reports go to stdout, never to disk
+#   cap_drop: ALL        no capabilities remain; the service binds 8300 (>1024)
+#   no-new-privileges    setuid binaries cannot elevate, even if one appears
+#   pids_limit           a crafted YAML cannot fork-bomb the host
+#   tmpfs /tmp           16 MiB, never persisted
+#   :ro workspace        the scanner reads code; it must not be able to modify it
+#
+#   cp -n ../.env.example ../.env
+#   docker compose --env-file ../.env -f docker-compose.yml up -d --build
+
+name: cloudguard-scanner
+
+services:
+  scanner:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: cloudguard/scanner:local
+    container_name: cg-scanner
+    restart: unless-stopped
+
+    # --- security posture ---------------------------------------------------
+    read_only: true
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+
+    # --- resource envelope --------------------------------------------------
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.25
+
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+    volumes:
+      # Policy and advisory catalogue are immutable input.
+      - ../configs:/etc/scanner:ro
+      # The tree to scan. Read-only by design; point it at a checkout, never at
+      # a host directory holding credentials.
+      - ${SCANNER_WORKSPACE:-../configs}:/scan:ro
+
+    environment:
+      SCANNER_HOST: 0.0.0.0
+      SCANNER_PORT: "8300"
+      SCANNER_POLICY_FILE: ${SCANNER_POLICY_FILE:-/etc/scanner/policies/compliance.toml}
+      SCANNER_ALLOWED_ROOTS: ${SCANNER_ALLOWED_ROOTS:-/scan:/etc/scanner}
+      SCANNER_FAIL_ON: ${SCANNER_FAIL_ON:-high}
+      SCANNER_LOG_LEVEL: ${SCANNER_LOG_LEVEL:-info}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      TZ: ${TZ:-UTC}
+
+    ports:
+      # Loopback by default. On an instance publish on the private interface and
+      # keep 8300 out of the public security list.
+      - "${SCANNER_BIND_ADDRESS:-127.0.0.1}:${SCANNER_HOST_PORT:-8300}:8300"
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8300/healthz', timeout=2)"]
+      interval: 20s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+    stop_grace_period: 10s

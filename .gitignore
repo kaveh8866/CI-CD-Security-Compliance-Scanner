@@ -1,0 +1,93 @@
+# =============================================================================
+# CI/CD Security & Compliance Scanner — Git boundary
+# =============================================================================
+# A scanner is handed untrusted repositories and reports that describe their
+# weaknesses, so both directions are dangerous: credentials must not enter the
+# repo, and scan output must not leave the operator's machine.
+
+# --- Environment and credentials ---------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa*
+id_ed25519*
+*.kdbx
+secrets/
+keys/
+credentials.json
+*service-account*.json
+application_default_credentials.json
+.npmrc
+.pypirc
+
+# --- Scan artefacts (may quote vulnerable code or findings) -------------------
+reports/
+scan-results/
+results/
+*.sarif
+*.sarif.json
+scanner.sqlite
+scanner.sqlite3
+scanner.db
+*.db
+*.sqlite
+*.sqlite3
+audit.log
+data/
+.scanner-cache/
+configs/local/
+
+# --- OpenTofu / Terraform ----------------------------------------------------
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!terraform.tfvars.example
+crash.log
+crash.*.log
+tfplan
+*.tfplan
+
+# --- Python ------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# --- Container scratch -------------------------------------------------------
+docker/docker-compose.override.yml
+docker/*.local.*
+*.pid
+*.swp
+
+# --- Logs and archives -------------------------------------------------------
+logs/
+*.log
+*.tar.gz
+*.tar
+*.zip
+
+# --- CloudGuard internals ----------------------------------------------------
+.cloudguard/
+
+# --- OS / editor noise -------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.code-workspace
+node_modules/
+dist/

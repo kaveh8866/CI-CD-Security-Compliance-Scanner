@@ -1,0 +1,13 @@
+{
+  "name": "scanner-sample-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Intentionally outdated dependencies for the advisory-catalogue demo.",
+  "dependencies": {
+    "lodash": "4.17.15",
+    "minimist": "1.2.0"
+  },
+  "devDependencies": {
+    "left-pad": "*"
+  }
+}

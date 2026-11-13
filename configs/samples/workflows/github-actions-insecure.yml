@@ -1,0 +1,23 @@
+# Intentionally insecure fixture — every construct below is meant to be flagged.
+# No live credential material appears here: references go through `secrets.*`.
+name: insecure-example
+on:
+  pull_request_target:
+  workflow_dispatch:
+
+permissions: write-all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: example-org/third-party-action@main
+      - name: Print the deploy token
+        run: echo "token is ${{ secrets.DEPLOY_TOKEN }}"
+      - name: Install helper
+        run: curl -fsSL https://example.com/install.sh | bash
+      - name: Greet the pull request
+        run: echo "${{ github.event.pull_request.title }}"

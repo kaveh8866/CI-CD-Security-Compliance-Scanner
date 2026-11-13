@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cloudguard.local/schemas/scanner-policy.schema.json",
+  "title": "CloudGuard scanner policy",
+  "description": "Structural contract for configs/policies/*.toml after TOML parsing. The runtime parser enforces the same invariants; this schema exists so editors and external tooling can validate a policy before it reaches CI.",
+  "type": "object",
+  "required": ["policy", "controls"],
+  "additionalProperties": false,
+  "properties": {
+    "policy": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "fail_on": { "$ref": "#/$defs/severity" },
+        "ignore": {
+          "type": "array",
+          "description": "Repo-relative POSIX globs excluded from the scan.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "severity", "rules"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]{2,31}$" },
+          "title": { "type": "string", "minLength": 3 },
+          "severity": { "$ref": "#/$defs/severity" },
+          "description": { "type": "string" },
+          "remediation": { "type": "string" },
+          "rules": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Rule ids, with shell-style wildcards: CG-PIPE-001 or CG-SEC-*.",
+            "items": { "type": "string", "pattern": "^CG-[A-Z]+-[0-9*]+$" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "type": "string",
+      "enum": ["info", "low", "medium", "high", "critical"]
+    }
+  }
+}

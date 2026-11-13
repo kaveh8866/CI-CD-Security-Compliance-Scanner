@@ -1,0 +1,62 @@
+{
+  "$comment": "Offline advisory catalogue. Entries are intentionally small and reviewable; replace or extend it from OSV/GHSA exports. 'below' is the first fixed version. Rule ids CG-VULN-* map to control CG-CI-009.",
+  "schema_version": "1.0",
+  "updated": "2026-11-01",
+  "advisories": [
+    {
+      "id": "CVE-2023-32681",
+      "rule_id": "CG-VULN-001",
+      "package": "requests",
+      "ecosystem": "pypi",
+      "below": "2.31.0",
+      "severity": "high",
+      "title": "Proxy-Authorization header leak on redirect",
+      "summary": "requests forwards Proxy-Authorization to a redirected destination over HTTPS.",
+      "remediation": "Upgrade requests to 2.31.0 or later."
+    },
+    {
+      "id": "CVE-2023-45803",
+      "rule_id": "CG-VULN-002",
+      "package": "urllib3",
+      "ecosystem": "pypi",
+      "below": "2.0.7",
+      "severity": "high",
+      "title": "Request body not stripped on cross-origin redirect",
+      "summary": "urllib3 can forward a request body to a redirected host when a 303 response is returned.",
+      "remediation": "Upgrade urllib3 to 2.0.7 or later."
+    },
+    {
+      "id": "CVE-2020-14343",
+      "rule_id": "CG-VULN-003",
+      "package": "pyyaml",
+      "ecosystem": "pypi",
+      "below": "5.4",
+      "severity": "critical",
+      "title": "Arbitrary code execution through full_load",
+      "summary": "PyYAML's full_load resolves arbitrary Python objects from untrusted documents.",
+      "remediation": "Upgrade PyYAML to 5.4 or later and parse untrusted input with safe_load."
+    },
+    {
+      "id": "GHSA-35jh-r3h4-6jhm",
+      "rule_id": "CG-VULN-004",
+      "package": "lodash",
+      "ecosystem": "npm",
+      "below": "4.17.21",
+      "severity": "high",
+      "title": "Command injection in template",
+      "summary": "lodash template allows code injection through crafted template options.",
+      "remediation": "Upgrade lodash to 4.17.21 or later."
+    },
+    {
+      "id": "CVE-2021-44906",
+      "rule_id": "CG-VULN-005",
+      "package": "minimist",
+      "ecosystem": "npm",
+      "below": "1.2.6",
+      "severity": "critical",
+      "title": "Prototype pollution",
+      "summary": "minimist is vulnerable to prototype pollution through crafted arguments.",
+      "remediation": "Upgrade minimist to 1.2.6 or later."
+    }
+  ]
+}
