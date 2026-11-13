@@ -1,0 +1,75 @@
+#cloud-config
+# =============================================================================
+# CI/CD Security & Compliance Scanner — first-boot bootstrap (${project_name})
+# =============================================================================
+# Prepares the host and stops there. This file is rendered into instance
+# user-data, which is readable from the metadata service by any process on the
+# host — so it contains **no credential, no webhook URL and no .env**. The stack
+# is installed over SSH, and secrets are created on the host.
+#
+# What it does: Docker Engine + Compose plugin, a daemon config with hardening
+# defaults, SSH hardening, an empty application directory and unattended
+# security upgrades.
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - jq
+  - unattended-upgrades
+
+write_files:
+  # Daemon-level hardening so every container started on this host inherits it,
+  # even one started by hand without the compose file.
+  - path: /etc/docker/daemon.json
+    permissions: "0644"
+    content: |
+      {
+        "no-new-privileges": true,
+        "live-restore": true,
+        "userland-proxy": false,
+        "log-driver": "json-file",
+        "log-opts": { "max-size": "10m", "max-file": "2" }
+      }
+
+  - path: /etc/ssh/sshd_config.d/99-cloudguard.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      KbdInteractiveAuthentication no
+      X11Forwarding no
+
+  - path: /etc/motd
+    permissions: "0644"
+    content: |
+      ${project_name} — scanner host
+      Docker is installed; the scanner API is not running yet.
+      Deploy:
+        git clone ${repository}
+        cd CI-CD-Security-Compliance-Scanner && cp .env.example .env
+        docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+        curl -s http://127.0.0.1:${scanner_port}/healthz
+      Never put a credential in user-data: this MOTD and the metadata service
+      are readable by anything on the host.
+
+runcmd:
+  - curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+  - sh /tmp/get-docker.sh
+  - usermod -aG docker ubuntu
+  - systemctl enable --now docker
+  - systemctl restart docker
+  - mkdir -p ${install_dir}
+  - chown ubuntu:ubuntu ${install_dir}
+  - chmod 0750 ${install_dir}
+
+  # Security updates without a human in the loop; this host runs a security
+  # service and must not drift behind on patches.
+  - dpkg-reconfigure -f noninteractive unattended-upgrades
+  - systemctl enable --now unattended-upgrades
+  - systemctl restart ssh
+
+final_message: "${project_name} host ready after $UPTIME seconds"

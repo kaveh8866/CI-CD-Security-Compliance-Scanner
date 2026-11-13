@@ -5,8 +5,8 @@
 ![Docker](https://img.shields.io/badge/Docker-read--only%20%2B%20cap__drop%20ALL-2496ED?logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/unit-65%20passing-brightgreen)
 ![Smoke](https://img.shields.io/badge/smoke-25%2F25%20passing-brightgreen)
-![Stage](https://img.shields.io/badge/stage-1%20%C2%B7%20scaffold-blue)
-![OpenTofu](https://img.shields.io/badge/IaC-OpenTofu%20planned%20(Stage%202)-844FBA)
+![Stage](https://img.shields.io/badge/stage-2%20%C2%B7%20IaC-blue)
+![OpenTofu](https://img.shields.io/badge/IaC-OpenTofu%201.13%20validated-844FBA)
 
 A containerized scanning engine that inspects CI/CD pipeline definitions, flags
 known-vulnerable dependency pins, catches credentials committed to a repository,
@@ -16,9 +16,11 @@ It is deliberately small: one service, one TOML policy, one JSON advisory
 catalogue, about 1,200 lines of Python, and a report format that never contains
 the secret it found.
 
-**Stage 1 status:** scaffold, engine, policy evaluation, hardened container and
-the 65-test/25-assertion verification suite are complete and running locally.
-OCI provisioning is Stage 2; no cloud resource exists yet.
+**Stage 2 status:** the scanner runs locally, and the OCI infrastructure that
+hosts it is written in OpenTofu: VCN, internet gateway, public subnet, a
+22/8300-only security list and an Always Free A1.Flex instance. `tofu validate`
+passes and a real plan reports **6 to add**; nothing has been applied yet, so no
+cloud resource exists or bills today.
 
 ---
 
@@ -95,6 +97,41 @@ Validate a policy edit before it reaches the pipeline:
 ```bash
 PYTHONPATH=src python -m scanner validate-policy configs/policies/compliance.toml
 ```
+
+---
+
+## ☁️ Infrastructure (OpenTofu, OCI)
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars   # gitignored: tenancy, CIDRs, public key
+tofu init && tofu fmt -recursive -check && tofu validate && tofu plan
+# Plan: 6 to add, 0 to change, 0 to destroy
+```
+
+| Resource | Purpose |
+| --- | --- |
+| `oci_core_vcn` `10.7.0.0/16` | isolated network, disjoint from every other CloudGuard project |
+| `oci_core_internet_gateway` + route table | egress for OS updates and image pulls |
+| `oci_core_security_list` | ingress **22** and **8300 only**, each from one operator CIDR |
+| `oci_core_subnet` `10.7.1.0/24` | public subnet with the instance VNIC |
+| `oci_core_instance` `VM.Standard.A1.Flex` | 1 OCPU / 6 GB, Ubuntu 24.04 ARM, 50 GB boot |
+
+`scanner_allowed_cidr` is refused if set to `0.0.0.0/0` — in both the root and
+the module variable definitions. There is no 80/443 rule: this host serves no web
+UI. The zero-exposure path is an SSH tunnel with the container bound to loopback.
+
+Outputs expose `instance_public_ip`, `instance_private_ip`, `scanner_url`,
+`ingress_exposure` and copy-paste connection strings. Cloud-init installs Docker
+and hardens the daemon and SSH; it deliberately carries **no credential** —
+user-data is readable on the host.
+
+**Portability:** the module boundary (`network` → `subnet_id`; `compute` →
+`public_ip`) is provider-neutral. AWS and GCP mappings are documented in
+`terraform/README.md` and in comments: VCN→VPC/network, security list→security
+group/firewall, `oci_core_instance`→`aws_instance`/`google_compute_instance`,
+`user_data`→`user_data`/`metadata_startup_script`. OCI is the validated target;
+AWS and GCP are ports, not tested here.
 
 ---
 
@@ -196,7 +233,7 @@ produce noise.
 │   ├── advisories/                offline advisory catalogue
 │   ├── samples/                   intentionally insecure fixtures
 │   └── schema/                    policy and report JSON Schemas
-├── terraform/                     reserved for Stage 2 (documented, not applied)
+├── terraform/                     OCI VCN + subnet + security list + A1.Flex host, modules/
 ├── tests/                         65 unit tests + smoke.sh (25 assertions)
 └── docs/                          stage evidence transcripts
 ```
@@ -233,6 +270,9 @@ Scanning the 10-file fixture set: **20 findings** (4 critical, 8 high, 7 medium,
 | Path boundary | `/scan` allowed; project root, `/etc` and traversal attempts → `403` |
 | Redaction | No fixture credential value appears in any report or container log |
 | Container posture | read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, non-root, limits as declared |
+| IaC formatting | `tofu fmt -recursive -check` clean |
+| IaC validation | `tofu validate` → `Success! The configuration is valid.` |
+| OCI plan | **6 to add, 0 to change, 0 to destroy** against the real tenancy (nothing applied) |
 
 Reproduce:
 
@@ -256,8 +296,8 @@ Transcript: `docs/stage-1-verification.txt`.
   `4.17.21` is not consulted yet.
 - **The API has no authentication.** It is loopback-only and intended to sit
   behind an SSH tunnel or private network; do not publish port 8300.
-- **Not yet cloud-deployed.** Stage 1 deliberately creates no OCI resources, so
-  there is no live deployment to point at. That is Stage 2.
+- **Not yet cloud-deployed.** The OCI plan is validated but not applied, so
+  there is no live host or public IP to point at yet. Deployment is a later stage.
 - **Python 3.11+ is required** (`tomllib`); the image ships 3.12.
 
 ---
@@ -267,7 +307,7 @@ Transcript: `docs/stage-1-verification.txt`.
 | Stage | Scope | Status |
 | --- | --- | --- |
 | 1 | Scaffold, engine, policy, hardened container, verification | ✅ complete |
-| 2 | OpenTofu OCI network + compute, deploy to Always Free instance | ⬜ |
+| 2 | OpenTofu OCI network + compute, validated plan (6 to add) | ✅ complete |
 | 3 | Agent guide, operator prerequisites, policy authoring playbook | ⬜ |
 | 4 | Real-corpus benchmark, SARIF export, webhook notifications | ⬜ |
 | 5 | Cloud deployment verification with trial credits | ⬜ |

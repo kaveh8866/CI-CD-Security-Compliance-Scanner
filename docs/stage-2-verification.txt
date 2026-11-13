@@ -1,0 +1,115 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 2 — IaC Provisioning with OpenTofu (OCI)
+Evidence transcript
+Date: 2026-11-13
+Toolchain: OpenTofu v1.13.9 on windows_amd64, OCI provider 6.x
+Credentials: ~/.oci/config profile DEFAULT (config_file_profile)
+================================================================================
+
+SCOPE EXECUTED
+--------------
+1. Modular OpenTofu configuration under terraform/ targeting OCI:
+   - modules/network: VCN, internet gateway, public route table, security list,
+     public subnet.
+   - modules/compute: A1.Flex instance, VNIC lookup, Ubuntu image resolution,
+     cloud-init user-data.
+2. Root module wiring, tags, secret-free cloud-init template, full variable
+   contract, tfvars template and outputs.
+3. Static verification: `tofu init`, `tofu fmt -recursive -check`, `tofu validate`.
+4. Real plan against the tenancy (read-only provider calls): 6 to add.
+5. Git boundary check: tfvars, state and .terraform are ignored; no key material
+   or OCID placeholder is tracked.
+
+NOT EXECUTED IN THIS STAGE
+--------------------------
+- `tofu apply`. No VCN, subnet, security list, gateway, route table or instance
+  was created. There is no public IP and no billable resource.
+- Deployment of the container stack to a host belongs to the deployment stage.
+- AWS and GCP ports are documented, not validated.
+
+--------------------------------------------------------------------------------
+1. INITIALISATION
+--------------------------------------------------------------------------------
+$ tofu init -input=false
+  Initializing the backend...
+  Initializing provider plugins...
+  - Installing oracle/oci v6.x
+  OpenTofu has been successfully initialized!
+
+--------------------------------------------------------------------------------
+2. FORMAT
+--------------------------------------------------------------------------------
+$ tofu fmt -recursive -check
+  (no output)
+  all files formatted
+
+--------------------------------------------------------------------------------
+3. VALIDATION
+--------------------------------------------------------------------------------
+$ tofu validate
+  Success! The configuration is valid.
+
+--------------------------------------------------------------------------------
+4. PLAN — real tenancy, no apply
+--------------------------------------------------------------------------------
+$ tofu plan -input=false
+  # module.compute.data.oci_core_vnic.primary will be read during apply
+  # module.compute.data.oci_core_vnic_attachments.this will be read during apply
+  # module.compute.oci_core_instance.this will be created
+  # module.network.oci_core_internet_gateway.this will be created
+  # module.network.oci_core_route_table.public will be created
+  # module.network.oci_core_security_list.public will be created
+  # module.network.oci_core_subnet.public will be created
+  # module.network.oci_core_vcn.this will be created
+
+  Plan: 6 to add, 0 to change, 0 to destroy.
+
+The image data source (Canonical Ubuntu 24.04, filtered by shape) and the
+availability-domain data source (tenancy-scoped) resolved successfully, which is
+why the plan contains no unknown-count errors.
+
+--------------------------------------------------------------------------------
+5. EXPOSURE REVIEW (declared, derived from the security list)
+--------------------------------------------------------------------------------
+  ingress: 22/tcp   <- ssh_allowed_cidr
+  ingress: 8300/tcp <- scanner_allowed_cidr
+  egress:  all      -> 0.0.0.0/0
+  ingress_ports output = [22, 8300]
+
+Validation refuses scanner_allowed_cidr == "0.0.0.0/0" at both the root and the
+module boundary:
+  Error: scanner_allowed_cidr must be a specific IPv4 CIDR (e.g.
+  203.0.113.10/32), never 0.0.0.0/0.
+
+The hostname label is constrained to alphanumerics (max 15 chars); the SSH key
+variable refuses anything that is not an OpenSSH public key, so a private key
+cannot be pasted into state.
+
+--------------------------------------------------------------------------------
+6. GIT BOUNDARY
+--------------------------------------------------------------------------------
+$ git check-ignore -q terraform/terraform.tfvars        -> ignored
+$ git check-ignore -q terraform/terraform.tfstate       -> ignored
+$ git check-ignore -q terraform/.terraform              -> ignored
+$ git check-ignore -q terraform/*.tfstate.backup        -> ignored
+
+Tracked under terraform/: configuration, modules, tfvars EXAMPLE only, README,
+lock file. The filled terraform.tfvars used for the plan remains local.
+
+No OCID, API key path, SSH private key or credential appears in any tracked
+Terraform file. cloud-init carries only project name, port, install directory and
+repository URL.
+
+--------------------------------------------------------------------------------
+7. OUTPUT CONTRACT
+--------------------------------------------------------------------------------
+instance_public_ip, instance_private_ip, instance_id, instance_shape,
+availability_domain, scanner_url, vcn_id, subnet_id, security_list_id,
+ingress_ports, ingress_exposure, connection_endpoints, deploy_next_step.
+
+================================================================================
+STAGE 2 RESULT: COMPLETE
+IaC validated and planned (6 to add); nothing applied; zero cloud spend.
+Next: Stage 3 documentation, then deployment.
+================================================================================
