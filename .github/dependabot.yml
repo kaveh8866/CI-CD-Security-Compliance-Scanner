@@ -1,0 +1,40 @@
+# =============================================================================
+# Scoped dependency monitoring
+# =============================================================================
+# Only real runtime inputs are listed: /src (PyYAML) and / (Dockerfile).
+# configs/samples/ is intentionally absent — its manifests are vulnerable test
+# fixtures and must never be "fixed" by a bot. See configs/samples/README.md.
+#
+# Automated security fixes are disabled repo-wide, so this configuration only
+# produces version-update PRs for the two paths below. Security alerting for
+# the runtime surface is handled by .github/workflows/security.yml.
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/src"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+    groups:
+      runtime:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "05:00"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"

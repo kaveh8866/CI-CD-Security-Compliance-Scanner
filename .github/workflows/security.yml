@@ -1,0 +1,74 @@
+name: security
+
+# Weekly and on-demand audit of the real runtime surface: the pinned base
+# image and src/requirements.txt. Test fixtures under configs/samples/ are
+# deliberately out of scope.
+#
+# `ignore-unfixed: true` keeps Debian's unfixed base OS noise out of the gate;
+# only vulnerabilities with a published fix can fail the workflow. Both
+# scanners run to completion so a dependency failure does not hide container
+# results, and the final gate enforces either failure.
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "Dockerfile"
+      - "src/requirements.txt"
+      - ".github/workflows/security.yml"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Build runtime image
+        run: docker build --pull -t cloudguard/scanner:security .
+
+      - name: Audit runtime Python dependencies
+        id: deps
+        continue-on-error: true
+        run: |
+          python -m pip install --disable-pip-version-check pip-audit==2.10.1
+          pip-audit -r src/requirements.txt
+
+      - name: Scan container image
+        id: image
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: cloudguard/scanner:security
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: "true"
+          exit-code: "1"
+
+      - name: Upload container findings to code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3.39.3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-image
+
+      - name: Enforce actionable-findings gate
+        if: always()
+        run: |
+          echo "dependency audit: ${{ steps.deps.outcome }}"
+          echo "container scan:   ${{ steps.image.outcome }}"
+          if [ "${{ steps.deps.outcome }}" != "success" ] || [ "${{ steps.image.outcome }}" != "success" ]; then
+            echo "::error::Actionable security findings detected; see the job summary and code scanning."
+            exit 1
+          fi
+          echo "No actionable dependency or container findings."
