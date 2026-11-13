@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import __version__, compliance
 from .engine import scan_path
-from .models import SEVERITIES
+from .models import Report, SEVERITIES
 from .sarif import to_sarif
 
 _SEVERITY_TAG = {
@@ -21,7 +21,7 @@ _SEVERITY_TAG = {
 }
 
 
-def _render(report) -> str:
+def _render(report: Report) -> str:
     lines: list[str] = []
     lines.append(f"policy   {report.policy_name} v{report.policy_version}")
     lines.append(f"target   {report.target}")

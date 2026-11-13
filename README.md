@@ -494,6 +494,27 @@ is the largest single line item at this size.
 
 ---
 
+## 🐕 Dogfooding
+
+The scanner is run against its own repository as part of final review:
+
+| Target | Files | Findings | Result |
+| --- | --- | --- | --- |
+| `src/` | 12 | **0** | 10/10 controls pass, exit `0` |
+| `tests/` | 8 | 5 high `CG-SEC-010` | intentional credential-shaped literals used to exercise detection; values are fake and reports carry only fingerprints |
+| `configs/samples/` | 5 | 21 (4 critical, 9 high, 7 medium, 1 low) | intentionally insecure validation fixtures: insecure workflows, vulnerable pins, a leaky env sample |
+| repository root | 65 | 26 | all 26 live in the two fixture sets above; **no finding originates in source code** |
+
+```bash
+PYTHONPATH=src python -m scanner scan src --fail-on critical   # exit 0, no findings
+PYTHONPATH=src python -m scanner scan configs/samples          # exit 1 by design
+```
+
+The root-scan exit `1` is expected: the fixtures exist so `tests/smoke.sh` can
+prove detection and redaction. A clean repository with this policy returns `0`.
+
+---
+
 ## 🔐 Zero-Leak Security Audit
 
 Audited 2026-11-13 against the full working tree (66 tracked files, 67 paths scanned) and the Git index:

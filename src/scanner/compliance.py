@@ -60,9 +60,6 @@ class Policy:
     ignore: tuple[str, ...] = field(default_factory=tuple)
     source: str = ""
 
-    def applies_to(self, rule_id: str) -> bool:
-        return any(fnmatch.fnmatchcase(rule_id, pattern) for control in self.controls for pattern in control.rules)
-
     def evaluate(self, findings: list[Finding]) -> list[ControlResult]:
         results: list[ControlResult] = []
         for control in self.controls:

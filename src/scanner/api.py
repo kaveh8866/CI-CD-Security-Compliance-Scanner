@@ -193,7 +193,11 @@ def create_server(host: str, port: int, policy: compliance.Policy | None = None)
 
 def serve() -> int:
     host = os.environ.get("SCANNER_HOST", "0.0.0.0")
-    port = int(os.environ.get("SCANNER_PORT", str(DEFAULT_PORT)))
+    try:
+        port = int(os.environ.get("SCANNER_PORT", str(DEFAULT_PORT)))
+    except ValueError:
+        print("fatal: SCANNER_PORT must be an integer", file=sys.stderr)
+        return 2
     policy_path = os.environ.get("SCANNER_POLICY_FILE")
 
     try:
