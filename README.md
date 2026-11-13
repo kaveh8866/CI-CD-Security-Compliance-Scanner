@@ -512,6 +512,10 @@ PYTHONPATH=src python -m scanner scan configs/samples          # exit 1 by desig
 
 The root-scan exit `1` is expected: the fixtures exist so `tests/smoke.sh` can
 prove detection and redaction. A clean repository with this policy returns `0`.
+See [`configs/samples/README.md`](configs/samples/README.md) for the fixture
+inventory. Because those manifests are intentionally vulnerable, Dependabot
+automated fixes are disabled and its alerts are dismissed as `not_used`; never
+merge a dependency bump that rewrites this directory.
 
 ---
 
