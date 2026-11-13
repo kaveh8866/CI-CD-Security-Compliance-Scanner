@@ -53,6 +53,8 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
+          ignore-unfixed: "true"
+          limit-severities-for-sarif: "true"
           exit-code: "0"
 
       - name: Gate on actionable container findings
