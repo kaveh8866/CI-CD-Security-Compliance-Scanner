@@ -8,6 +8,7 @@
 ![Stage](https://img.shields.io/badge/stage-7%20%C2%B7%20audited%20%26%20documented-blue)
 ![Security](https://img.shields.io/badge/zero--leak%20audit-passing-brightgreen)
 ![OpenTofu](https://img.shields.io/badge/IaC-OpenTofu%201.13%20validated-844FBA)
+![License](https://img.shields.io/badge/license-MIT-green)
 
 A containerized scanning engine that inspects CI/CD pipeline definitions, flags
 known-vulnerable dependency pins, catches credentials committed to a repository,
@@ -547,4 +548,10 @@ Commands and raw output: `docs/stage-7-verification.txt`.
 | 5 | Cloud deployment on OCI trial credits, live scan and gate verification | ✅ complete |
 | 6 | Teardown, zero-resource verification, state cleanup | ✅ complete |
 | 7 | Security audit, README hardening, cross-cloud cost model | ✅ complete |
-| 8 | Release tag, public repository, CloudGuard certification | ⬜ |
+| 8 | Release tag, public repository, CloudGuard certification | ✅ complete |
+
+---
+
+## 📄 License
+
+Released under the [MIT License](LICENSE). Copyright (c) 2026 Mostafa Kaveh.
