@@ -5,6 +5,7 @@
 ![Docker](https://img.shields.io/badge/Docker-read--only%20%2B%20cap__drop%20ALL-2496ED?logo=docker&logoColor=white)
 ![Tests](https://img.shields.io/badge/unit-74%20passing-brightgreen)
 ![Smoke](https://img.shields.io/badge/smoke-29%2F29%20passing-brightgreen)
+[![CI](https://github.com/kaveh8866/CI-CD-Security-Compliance-Scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/kaveh8866/CI-CD-Security-Compliance-Scanner/actions/workflows/ci.yml)
 ![Stage](https://img.shields.io/badge/stage-7%20%C2%B7%20audited%20%26%20documented-blue)
 ![Security](https://img.shields.io/badge/zero--leak%20audit-passing-brightgreen)
 ![OpenTofu](https://img.shields.io/badge/IaC-OpenTofu%201.13%20validated-844FBA)
