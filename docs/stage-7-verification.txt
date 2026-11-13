@@ -1,0 +1,163 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 7 — Security Audit, README Documentation & Cost Estimation
+Evidence transcript
+Date: 2026-11-13
+Host: Windows 11 + Git Bash; repository at 66 tracked files
+================================================================================
+
+RESULT
+------
+  Tracked secrets / databases / logs        0
+  Ignore rules verified                     8/8 active (96-rule .gitignore)
+  Templates tracked                         .env.example, terraform.tfvars.example
+  Local untracked runtime files             .env only (ignored)
+  CloudGuard sanitizer                      67 files, 0 exposed, 1 expected block
+  README                                    rewritten/expanded to enterprise sections
+  Cost model                                OCI / AWS / GCP table added
+  Commit                                    docs: add comprehensive README, security
+                                            audit sign-off, and cross-cloud cost
+                                            breakdown for CI/CD security and
+                                            compliance scanner
+
+--------------------------------------------------------------------------------
+1. ZERO-LEAK AUDIT
+--------------------------------------------------------------------------------
+Tracked paths matching sensitive patterns:
+
+$ git ls-files | grep -Ei '(\.db$|\.sqlite|\.log$|\.pem$|\.key$|(^|/)\.env$|
+    terraform\.tfvars$|\.tfstate|id_rsa|credentials\.json|service-account)'
+  (no matches)
+
+Tracked templates:
+
+$ git ls-files | grep -E '\.env\.example|\.tfvars\.example'
+  .env.example
+  configs/samples/leaky.env.example      # intentionally insecure fixture
+  terraform/terraform.tfvars.example
+
+Ignore rules, verified with Git itself (not by eye):
+
+$ git check-ignore -q <path> && echo ignored
+  .env                              ignored
+  .env.local                        ignored
+  terraform/terraform.tfvars        ignored
+  terraform/terraform.tfstate       ignored
+  reports/x.json                    ignored
+  data/vault.db                     ignored
+  logs/run.log                      ignored
+  key.pem                           ignored
+
+Files present in the working tree that could carry secrets:
+
+$ find . -path ./.git -prune -o -type f \
+    \( -name "*.db" -o -name "*.sqlite" -o -name "*.pem" -o -name "*.key" \
+    -o -name "*.log" -o -name ".env" \) -print
+  ./.env
+
+  Interpretation: the only runtime secret file is `.env`, which is ignored and
+  never staged. No database, scan report, audit log, key or certificate exists in
+  the tree at all, and Terraform state was removed in Stage 6.
+
+.gitignore structure (96 lines, sectioned):
+  environment/credentials (.env, *.pem, *.key, id_*, credentials.json, ...)
+  scan artefacts          (reports/, *.sarif, *.db, audit.log, data/, ...)
+  OpenTofu/Terraform      (.terraform/, *.tfstate*, *.tfvars, tfplan)
+  Python, container scratch, logs/archives, CloudGuard internals, OS noise
+  Explicit publish exceptions for docs/stage-4-evidence/*.sarif and
+  docs/stage-5-evidence/*.sarif only; templates are re-included.
+
+.env.example structure:
+  - marked [TEMPLATE]
+  - placeholder Slack webhook / email, hyphenated fake OCI OCIDs
+  - binding defaults to 127.0.0.1 with a warning about the unauthenticated API
+  - no real credential, token or tenancy identifier
+
+CloudGuard sanitizer:
+
+  files=67 exposed=0 blocked=1
+
+  The single blocked item is the intentionally leaky sample fixture, which is
+  required for the scanner's detection tests and is clearly labelled as such.
+
+--------------------------------------------------------------------------------
+2. README CHANGES
+--------------------------------------------------------------------------------
+The README now opens with badges plus a Stage 7 status (audited, documented,
+torn down). Added/rewritten:
+
+- `## ✨ Features` — pipeline SAST, value-free secret detection, dependency risk,
+  declarative compliance, CI-native output, hardened runtime, portable delivery.
+- `### How a scan flows` — ASCII workflow containing the required chain:
+    [CI/CD Pipeline / PRs] --> (Webhook / Trigger) -->
+    [Security & Compliance Scanner Engine] -->
+    [Policy Evaluation & SAST / Secrets Check] --> (OCI Compute Instance)
+  plus the request path, scan roots, output and gate below it.
+- `## 🌐 Cloud-Agnostic Portability` — explicit statement that OpenTofu supports
+  AWS, GCP and OCI, but final production verification and testing certification
+  were performed strictly on OCI using trial credits; mapping table for network,
+  firewall, compute and bootstrap; migration tips for AWS and GCP.
+- `### Configuring compliance policies` — edit → validate → set threshold/ignore
+  → wire `SCANNER_POLICY_FILE`/`--fail-on`.
+- `### Running a local pipeline scan` — CLI, JSON and hardened-container forms
+  with exit-code contract (0/1/2).
+- `### Reading a vulnerability report` — annotated JSON sample, summary vs
+  findings, categories, wildcard controls and SARIF level mapping.
+- `## 💰 Cross-Cloud Cost & Benchmark Estimation` — see section 3.
+- `## 🔐 Zero-Leak Security Audit` — the check table above, dated.
+- Verification table extended to Stages 1–7 with the audit row; roadmap row 7
+  marked complete.
+
+--------------------------------------------------------------------------------
+3. COST AND BENCHMARK BASIS
+--------------------------------------------------------------------------------
+Tested footprint: 1 vCPU (container capped at 0.25), 1 GiB RAM, 50 GB disk,
+negligible egress (~11 KB JSON / ~34 KB SARIF per scan).
+
+Assumptions: Linux on-demand list prices, November 2026, 730 h/month, excluding
+tax, backups and support; free-tier allowances applied where stated.
+
+  OCI Always Free   E2.1.Micro 1 OCPU / 1 GB; 50 GB inside the 200 GB block
+                    allowance; egress inside 10 TB/month -> $0/month.
+  OCI trial credits Stage 5 ran entirely on trial credits -> $0 cash.
+  AWS eu-central-1  t3.micro $0.012/h (~$8.76) + 50 GB gp3 @ $0.0952 (~$4.76)
+                    + first 100 GB egress free -> ~$13.52/month.
+                    1 TB egress adds ~$83.16 -> ~$96.68/month.
+  GCP us-central1   e2-micro $0.008376/h (~$6.12) + 50 GB pd-standard @ $0.04
+                    (~$2.00) + 100 GB egress @ $0.12 (~$12.00) ->
+                    ~$20.12 on-demand; ~$12.68 with free-tier compute.
+
+Benchmarks quoted from measured runs: 181 MB image, 19.19 MiB idle RSS, 24.5 MiB
+peak, 54 ms live scan (OCI micro) / 114.6 ms local for 10 files and 21 findings.
+
+Caveat: these are list-price estimates for the tested shape, not a bill. Egress
+tiers, free-tier eligibility by account age/region and CPU-credit behaviour on
+t3/e2 shared-core instances change the real number. Re-measure after migrating.
+
+--------------------------------------------------------------------------------
+4. CHECKS RUN ON THE DOCUMENTATION
+--------------------------------------------------------------------------------
+- Markdown fences balanced in README.md, AGENT_GUIDE.md, MANUAL_PREREQS.md and
+  this transcript.
+- Required workflow chain present verbatim in the architecture block.
+- Cost section present exactly as `## 💰 Cross-Cloud Cost & Benchmark Estimation`.
+- All referenced paths exist (`AGENT_GUIDE.md`, `MANUAL_PREREQS.md`,
+  `docker/README.md`, `terraform/README.md`, stage transcripts).
+- `tofu fmt -recursive -check` and `tofu validate` remain clean (no IaC change).
+- Zero-leak sanitizer re-run after the edits: 0 exposed findings.
+
+--------------------------------------------------------------------------------
+5. NOT CLAIMED
+--------------------------------------------------------------------------------
+- No AWS or GCP deployment was performed; their costs and mappings are estimates
+  and ports, not certification. Only OCI was verified, on trial credits.
+- The price table is not a quote and was not pulled from a billing API.
+- No scanner behaviour changed in this stage; tests were not re-run because no
+  code or configuration changed (last full run: 74 unit + 29 smoke, Stage 6).
+
+================================================================================
+STAGE 7 RESULT: COMPLETE
+Repository is zero-leak clean under Git-verified rules, the README documents
+architecture, policies, scans, reports, portability and cost, and the audit is
+signed off with reproducible commands.
+================================================================================
