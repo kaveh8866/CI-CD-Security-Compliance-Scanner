@@ -38,3 +38,10 @@ updates:
       prefix: "deps"
     labels:
       - "dependencies"
+    # Base-image digest and patch refreshes are welcome; a jump to a new
+    # Python minor (e.g. 3.12 -> 3.15) needs its own compatibility review.
+    ignore:
+      - dependency-name: "python"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"

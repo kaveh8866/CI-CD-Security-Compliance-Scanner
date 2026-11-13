@@ -42,15 +42,27 @@ jobs:
           python -m pip install --disable-pip-version-check pip-audit==2.10.1
           pip-audit -r src/requirements.txt
 
-      - name: Scan container image
-        id: image
-        continue-on-error: true
+      # SARIF mode deliberately reports every severity and does not honour
+      # ignore-unfixed, so publishing and gating are separate scans: publish
+      # the full picture, then fail only on fixable HIGH/CRITICAL findings.
+      - name: Publish container findings to code scanning
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: cloudguard/scanner:security
           format: sarif
           output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "0"
+
+      - name: Gate on actionable container findings
+        id: image
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: cloudguard/scanner:security
+          format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: "true"
           exit-code: "1"
