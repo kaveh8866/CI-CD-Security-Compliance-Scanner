@@ -1,0 +1,142 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 6 — Clean Teardown & Resource Cleanup
+Evidence transcript
+Date: 2026-11-13
+Operator: Windows 11 + Git Bash, OpenTofu 1.13.9, OCI eu-frankfurt-1
+Scope: local stack, remote stack, OpenTofu state, provider-side resource check
+================================================================================
+
+RESULT
+------
+  Local container           stopped and removed with `docker compose down`
+  Remote container          stopped and removed with `docker compose down`
+  Terraform state (before)  42,295 bytes, 6 managed resources + 4 data sources
+  Destroy plan              0 to add, 0 to change, 6 to destroy
+  Destroy                   6 destroyed (instance 1m04s, then network)
+  State after               empty; state file removed after provider check
+  Provider check            project instance and boot volume TERMINATED,
+                            VCNs 0, subnets 0 -> no live billable resource
+
+--------------------------------------------------------------------------------
+1. PRE-TEARDOWN HEALTH AND STATE
+--------------------------------------------------------------------------------
+Local stack:
+
+$ docker compose --env-file .env -f docker/docker-compose.yml down
+  Container cg-scanner Stopping
+  Container cg-scanner Stopped
+  Container cg-scanner Removing
+  Container cg-scanner Removed
+  Network cloudguard-scanner_default Removing
+  Network cloudguard-scanner_default Removed
+  local containers remaining: 0
+
+Remote stack (130.162.211.255, last live host):
+
+$ ssh ubuntu@130.162.211.255
+  health before shutdown: {"status":"ok","service":"cicd-security-scann...
+  $ cd ~/scanner && docker compose --env-file .env -f docker/docker-compose.yml down
+  Container cg-scanner Stopping
+  Container cg-scanner Stopped
+  Container cg-scanner Removing
+  Container cg-scanner Removed
+  Network cloudguard-scanner_default Removing
+  Network cloudguard-scanner_default Removed
+  remote containers remaining: 0
+
+State integrity check before any destructive action:
+
+  terraform.tfstate  42,295 bytes
+  module.compute.data.oci_core_images.ubuntu[0]
+  module.compute.data.oci_core_vnic.primary
+  module.compute.data.oci_core_vnic_attachments.this
+  module.compute.data.oci_identity_availability_domains.ads
+  module.compute.oci_core_instance.this
+  module.network.oci_core_internet_gateway.this
+  module.network.oci_core_route_table.public
+  module.network.oci_core_security_list.public
+  module.network.oci_core_subnet.public
+  module.network.oci_core_vcn.this
+
+Managed resource names: cloudguard-scanner-dev-vm, -vnic, -vcn.
+
+--------------------------------------------------------------------------------
+2. DESTROY
+--------------------------------------------------------------------------------
+Decision Guard approval: destructive action explicitly requested by the operator
+for this stage; the teardown ran only against this project's compartment scope.
+
+$ tofu plan -destroy
+  Plan: 0 to add, 0 to change, 6 to destroy.
+
+$ tofu destroy -auto-approve
+  module.compute.oci_core_instance.this: Destruction complete after 1m4s
+  module.network.oci_core_subnet.public: Destruction complete after 1s
+  module.network.oci_core_security_list.public: Destruction complete after 0s
+  module.network.oci_core_route_table.public: Destruction complete after 0s
+  module.network.oci_core_internet_gateway.this: Destruction complete after 0s
+  module.network.oci_core_vcn.this: Destruction complete after 1s
+  Destroy complete! Resources: 6 destroyed.
+
+$ tofu state list
+  (no output)
+  state resources: 0
+
+--------------------------------------------------------------------------------
+3. ZERO-RESOURCE VERIFICATION (OCI API, not console simulation)
+--------------------------------------------------------------------------------
+The OCI CLI is not installed on this workstation, so the check used a throwaway
+OpenTofu configuration with read-only OCI data sources (instances, VCNs, subnets,
+boot volumes) against the real compartment, reusing the pinned provider 7.32.0
+and the default OCI profile. It was deleted after the query.
+
+  remaining_instances:     ["cloudguard-scanner-dev-vm (TERMINATED)"]
+  remaining_vcns:          []
+  remaining_subnets:       []
+  remaining_boot_volumes:  ["cloudguard-scanner-dev-vm (Boot Volume) (TERMINATED)"]
+  compartment totals (all projects in the compartment): instances 3,
+  boot volumes 3, VCNs 0, subnets 0
+
+Interpretation:
+- The project instance and its boot volume are TERMINATED. Terminated compute
+  and terminated boot volumes are not billable; the VCN, subnet, internet
+  gateway, route table and security list no longer exist (0).
+- The compartment totals include terminated records from other CloudGuard
+  projects; none of them belongs to project 07. The project-scoped filter
+  (`cloudguard-scanner`) matched only the terminated pair above.
+- Security lists and route tables are children of a VCN, and no VCN remains, so
+  those resources are gone as well.
+
+Billing note: this verifies resource absence through the OCI API, not an invoice
+or billing-API read. With no running instance, no attached boot volume and no
+network resources, the project's compute/storage/network burn rate is zero; the
+tenancy remains inside the Always Free allowance.
+
+--------------------------------------------------------------------------------
+4. CLEANUP
+--------------------------------------------------------------------------------
+- Temporary data-source config and its state: deleted (`.verify-tmp`).
+- `terraform.tfstate` and `.tfstate.backup`: removed after the provider check, as
+  the runbook requires. `terraform.tfvars` and the local `.env` stay local and
+  gitignored.
+- Remote host: destroyed, so `~/scanner`, the runtime `.env` and the copied
+  archive no longer exist.
+- Local image `cloudguard/scanner:local` remains cached (not a cloud resource).
+
+--------------------------------------------------------------------------------
+5. WHAT THIS DOES NOT CLAIM
+--------------------------------------------------------------------------------
+- No invoice-level billing read was performed; the claim is zero live resources,
+  which is the precondition for zero spend.
+- Other CloudGuard projects' resources in the same compartment were not touched
+  or audited here.
+- The repository was never pushed, so no remote history was affected; the
+  teardown is local state plus OCI resources only.
+
+================================================================================
+STAGE 6 RESULT: CLEAN
+Both stacks stopped, 6 managed OCI resources destroyed, state empty and removed,
+provider API shows the project's compute and boot volume terminated with no VCN
+or subnet remaining. The environment is reset and ready for final packaging.
+================================================================================

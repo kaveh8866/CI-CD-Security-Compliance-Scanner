@@ -368,31 +368,33 @@ not log parsing.
 
 ---
 
-## 10. Live deployment (Stage 5)
+## 10. Live deployment (Stage 5, torn down in Stage 6)
 
-The stack runs on a real OCI host; local verification is no longer the only
-evidence.
+**Nothing is deployed now.** This section records how the live verification was
+performed and how to repeat it; every command below assumes you have just
+re-applied the infrastructure. The host, its boot volume and all network
+resources were destroyed in Stage 6.
 
 | | |
 | --- | --- |
-| Endpoint | `http://130.162.211.255:8300` (operator `/32` only) |
+| Endpoint | none — the old endpoint `130.162.211.255:8300` is gone |
 | Instance | `VM.Standard.E2.1.Micro`, 1 OCPU / 1 GB, `jiTx:EU-FRANKFURT-1-AD-3` |
 | OS / runtime | Ubuntu 24.04.5 LTS, Docker 29.9.3, Compose v5.7.1 |
 | Remote app root | `/home/ubuntu/scanner` (no `.git`, no `.env` from the workstation) |
 | Remote `.env` | written on the host: `SCANNER_BIND_ADDRESS=0.0.0.0`, port 8300, fail-on high |
 | Evidence | `docs/stage-5-verification.txt`, `docs/stage-5-evidence/` |
 
-Check it:
+Check a freshly deployed host (replace the IP with the new `instance_public_ip`):
 
 ```bash
-curl -fsS http://130.162.211.255:8300/healthz
-curl -fsS http://130.162.211.255:8300/policy
-curl -s -X POST http://130.162.211.255:8300/scan \
+curl -fsS http://<new-ip>:8300/healthz
+curl -fsS http://<new-ip>:8300/policy
+curl -s -X POST http://<new-ip>:8300/scan \
   -H 'Content-Type: application/json' -d '{"path":"/scan"}' | python -m json.tool | head
 
-ssh ubuntu@130.162.211.255 \
+ssh ubuntu@<new-ip> \
   'docker exec cg-scanner python -m scanner scan /scan --fail-on high; echo exit=$?'
-ssh ubuntu@130.162.211.255 'docker logs cg-scanner 2>&1 | grep "\"event\":\"scan\"" | tail -3'
+ssh ubuntu@<new-ip> 'docker logs cg-scanner 2>&1 | grep "\"event\":\"scan\"" | tail -3'
 ```
 
 Redeploy after a local change (the repository has never been pushed, so transfer
@@ -402,8 +404,8 @@ an archive rather than cloning):
 tar -czf /tmp/p07-src.tgz --exclude='./.git' --exclude='./.env' \
   --exclude='./terraform/.terraform' --exclude='./terraform/terraform.tfvars' \
   --exclude='./terraform/*.tfstate*' --exclude='./reports' --exclude='./data' .
-scp /tmp/p07-src.tgz ubuntu@130.162.211.255:~/p07-src.tgz
-ssh ubuntu@130.162.211.255 'rm -rf ~/scanner && mkdir ~/scanner && \
+scp /tmp/p07-src.tgz ubuntu@<new-ip>:~/p07-src.tgz
+ssh ubuntu@<new-ip> 'rm -rf ~/scanner && mkdir ~/scanner && \
   tar -xzf ~/p07-src.tgz -C ~/scanner && cd ~/scanner && \
   docker compose --env-file .env -f docker/docker-compose.yml up -d --build'
 ```
@@ -460,15 +462,15 @@ Teardown is stage 6 work and only on operator request:
 - **Final production verification and testing certification are performed
   strictly on Oracle Cloud Infrastructure (OCI) using trial credits.** AWS and
   GCP are supported ports, never certified targets.
-- Stage 5 status: deployed to OCI on trial credits at
-  `http://130.162.211.255:8300` (`VM.Standard.E2.1.Micro`, AD-3, Ubuntu 24.04).
-  Live scan matches the local baseline: 21 findings, 9/10 controls failing,
-  gate exit 1, SARIF 21 results, audit events value-free and retained across a
-  restart. A1.Flex capacity was exhausted in all three ADs, so the micro shape
-  is the deployed fallback. The host is real and billing against trial credits;
-  do not destroy it without an explicit operator request.
-- The API is unauthenticated by design. Reachability depends entirely on the OCI
-  security list (one operator `/32` on 22 and 8300). Never widen
+- Stage 6 status: no cloud resources exist. The Stage 5 host was verified live
+  and then destroyed: `tofu destroy` removed all 6 managed resources, the state
+  is empty and its file was removed, and an OCI API check shows the project's
+  instance and boot volume `TERMINATED` with zero VCNs and subnets. Do not SSH to
+  the old IP, do not assume a running endpoint, and do not run `tofu destroy`
+  again — there is nothing left to destroy. Redeploying is deliberate work:
+  restore state by applying the config (section 10).
+- The API is unauthenticated by design. Any deployment depends entirely on the
+  OCI security list (one operator `/32` on 22 and 8300). Never widen
   `scanner_allowed_cidr`, never publish 8300 to a broader range, and never
   describe the endpoint as internet-safe.
 - What is already proven: the engine's behaviour, the container's runtime

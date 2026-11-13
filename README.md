@@ -16,14 +16,13 @@ It is deliberately small: one service, one TOML policy, one JSON advisory
 catalogue, about 1,200 lines of Python, and a report format that never contains
 the secret it found.
 
-**Stage 5 status:** deployed and verified on OCI (`eu-frankfurt-1`, trial
-credits) at **http://130.162.211.255:8300** — a `VM.Standard.E2.1.Micro` in
-AD-3 running Ubuntu 24.04 with Docker 29.9.3 and Compose v5.7.1. The live scan
-matches the local baseline (21 findings, 9/10 controls failing, gate exit `1`,
-SARIF 2.1.0 with 21 results), the audit trail contains no credential value and
-survives a container restart. A1.Flex capacity was exhausted in every
-availability domain, so the deployment runs on the AMD Always Free micro shape.
-Ingress is restricted to the operator `/32` on 22 and 8300.
+**Stage 6 status:** the Stage 5 deployment was verified live and then destroyed.
+All 6 OCI resources (instance, boot volume, VCN, subnet, internet gateway, route
+table, security list) are gone, the state file is empty and removed, and an OCI
+API check finds the project's compute and boot volume `TERMINATED` with no VCN or
+subnet left — no live billable resource, so the project's spend rate is zero.
+The local stack is also stopped. The scanner itself is unchanged and still
+passes 74 unit tests and 29 smoke assertions; redeploy with the commands below.
 
 ---
 
@@ -144,13 +143,13 @@ Outputs expose `instance_public_ip`, `instance_private_ip`, `scanner_url`,
 and hardens the daemon and SSH; it deliberately carries **no credential** —
 user-data is readable on the host.
 
-**Deployed (Stage 5).** Six resources are live; the public IP is
+**Deployed in Stage 5, destroyed in Stage 6.** Six resources existed at
 `130.162.211.255`. A credential-free archive is copied to `~/scanner` (the
 instance does not clone: the repository has never been pushed), the runtime
 `.env` is written on the host, and the stack starts with:
 
 ```bash
-ssh ubuntu@130.162.211.255
+ssh ubuntu@<instance_public_ip>
 cd ~/scanner
 docker compose --env-file .env -f docker/docker-compose.yml up -d --build
 docker compose --env-file .env -f docker/docker-compose.yml ps   # cg-scanner (healthy)
@@ -160,8 +159,16 @@ The container binds `0.0.0.0:8300` **inside the host** so the security-list rule
 can reach it; the list admits only the operator `/32`, and
 `scanner_allowed_cidr` refuses `0.0.0.0/0`. The zero-exposure path (SSH tunnel
 with the loopback default) still works and needs no cloud change. State and
-`terraform.tfvars` remain local and gitignored; the instance was **not**
-destroyed.
+`terraform.tfvars` remain local and gitignored.
+
+Tear down the same way; `plan -destroy` reports 6 to destroy, and the provider
+check should return only `TERMINATED` records:
+
+```bash
+docker compose --env-file .env -f docker/docker-compose.yml down
+ssh ubuntu@<ip> 'cd ~/scanner && docker compose --env-file .env -f docker/docker-compose.yml down'
+cd terraform && tofu plan -destroy && tofu destroy -auto-approve && tofu state list
+```
 
 **Portability:** the module boundary (`network` → `subnet_id`; `compute` →
 `public_ip`) is provider-neutral. AWS and GCP mappings are documented in
@@ -297,7 +304,7 @@ Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 
 ---
 
-## ✅ Verification (Stages 1–5)
+## ✅ Verification (Stages 1–6)
 
 | Check | Result |
 | --- | --- |
@@ -310,7 +317,7 @@ Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 | Path boundary | `/scan` allowed; project root, `/etc` and traversal attempts → `403` |
 | Redaction | No fixture credential value appears in any report or container log |
 | Container posture | read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, non-root, limits as declared — re-read from the live host with `docker inspect` |
-| Live health (OCI) | `http://130.162.211.255:8300/healthz` → `ok`, 10 controls |
+| Live health (OCI) | `http://130.162.211.255:8300/healthz` → `ok`, 10 controls (Stage 5; host destroyed in Stage 6) |
 | Live scan parity | 21 findings (4/9/7/1), 2 secrets, 12 pipeline, 7 dependency, 9/10 controls failing — identical to local |
 | Live gate | remote CLI `--fail-on high` → exit `1`; clean schema tree → exit `0` |
 | Live SARIF | 2.1.0, 19 rules, 21 results, 13 `error` / 7 `warning` / 1 `note` |
@@ -320,14 +327,19 @@ Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 | OCI plan | **6 to add, 0 to change, 0 to destroy** against the real tenancy (nothing applied) |
 | Documentation | `AGENT_GUIDE.md` and `MANUAL_PREREQS.md` present, fences balanced, every referenced path exists |
 
-Reproduce:
+The live rows were measured in Stage 5; the host was destroyed in Stage 6, so they
+no longer reproduce against a running endpoint. Teardown evidence (stacks down,
+6 destroyed, provider check) is in `docs/stage-6-verification.txt`.
+
+Reproduce the local checks:
 
 ```bash
 docker compose --env-file .env -f docker/docker-compose.yml up -d --build
 BASE_URL=http://127.0.0.1:8300 bash tests/smoke.sh
 ```
 
-Transcript: `docs/stage-1-verification.txt`.
+Transcript: `docs/stage-1-verification.txt` (local), `docs/stage-5-verification.txt`
+(live), `docs/stage-6-verification.txt` (teardown).
 
 ---
 
@@ -342,15 +354,16 @@ Transcript: `docs/stage-1-verification.txt`.
   `4.17.21` is not consulted yet.
 - **The API has no authentication.** It is loopback-only and intended to sit
   behind an SSH tunnel or private network; do not publish port 8300.
-- **The deployed API has no authentication either.** Exposure is controlled only
-  by the OCI security list (one operator `/32` on 8300), not by the application.
-  Treat it as a private endpoint; tunnel or add auth before sending real data.
-- **The live host is the AMD free-tier micro** (`E2.1.Micro`, 1 GB), not the
-  planned A1.Flex: ARM capacity was exhausted in all three availability domains.
-  The 128 MiB / 0.25 CPU cap makes the footprint fit, but throughput beyond these
-  fixture scans is unmeasured on 1 GB.
-- **Single instance, no TLS, no load balancer, no backups.** This is a
-  trial-credit verification deployment, not a production topology.
+- **There is no live host right now.** Stage 5 was verified and then torn down;
+  redeploying repeats the capacity risk — A1.Flex was unavailable in all three
+  ADs and the AMD free-tier micro was the fallback.
+- **The deployed API had no authentication.** Exposure was controlled only by the
+  OCI security list (one operator `/32` on 8300), not by the application. Any
+  redeployment must keep that narrow rule; `scanner_allowed_cidr` refuses
+  `0.0.0.0/0`.
+- **That deployment was a single host with no TLS, no load balancer and no
+  backups** — a trial-credit verification target, not a production topology.
+  Zero-resource was verified through the OCI API, not an invoice read.
 - **Python 3.11+ is required** (`tomllib`); the image ships 3.12.
 
 ---
@@ -364,6 +377,6 @@ Transcript: `docs/stage-1-verification.txt`.
 | 3 | Agent guide and operator prerequisites | ✅ complete |
 | 4 | Local stack, policy loading, JSON/SARIF reports, gate and audit-log verification | ✅ complete |
 | 5 | Cloud deployment on OCI trial credits, live scan and gate verification | ✅ complete |
-| 6 | Teardown and zero-cost proof | ⬜ |
+| 6 | Teardown, zero-resource verification, state cleanup | ✅ complete |
 | 7 | Security audit, README hardening, cross-cloud cost model | ⬜ |
 | 8 | Release tag, public repository, CloudGuard certification | ⬜ |
