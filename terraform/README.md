@@ -94,6 +94,11 @@ GCP needs `network_interface { access_config {} }` for the public IP; the
 
 ## Cost
 
-Everything sits inside the OCI Always Free envelope: A1.Flex 1 OCPU / 6 GB,
-50 GB boot volume (200 GB free across the tenancy) and egress far below the
-10 TB/month allowance. Effective monthly cost: **$0**.
+Everything sits inside the OCI Always Free envelope: one free-tier instance
+(A1.Flex 1 OCPU / 6 GB requested; Stage 5 deployed `E2.1.Micro` 1 OCPU / 1 GB in
+AD-3 after "Out of host capacity" in all three ADs), 50 GB boot volume (200 GB
+free across the tenancy) and egress far below the 10 TB/month allowance.
+Effective monthly cost: **$0**.
+
+Deployed state is recorded in `../docs/stage-5-verification.txt`; changing shape
+or AD means editing the local `terraform.tfvars` and re-running `tofu apply`.

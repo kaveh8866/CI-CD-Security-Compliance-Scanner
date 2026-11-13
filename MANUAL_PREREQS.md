@@ -24,12 +24,13 @@ it, it does not claim it happened.
 | Region | `eu-frankfurt-1` | A1 capacity differs per region and AD; changing it later means a new VCN |
 | Compartment | your project compartment | scopes everything Terraform creates; never reuse an unrelated compartment |
 | Scanner gate | `fail_on = high` | how strict CI becomes on day one |
-| Public API access | **none** (SSH tunnel) | the API has no authentication; loopback + tunnel is the safe default |
+| Public API access | operator `/32` on 8300 (or SSH tunnel) | the API has no authentication; Stage 5 deployed with one-CIDR ingress, a tunnel remains the zero-exposure option |
 | Notification channel | none yet | webhook fields exist in `.env`; wiring is a later stage |
 
-Cost envelope: one `VM.Standard.A1.Flex` (1 OCPU / 6 GB), one 50 GB boot volume,
-one VCN. Inside OCI Always Free / trial credits this is **$0**. Set a budget alert
-in the OCI console before applying anything.
+Cost envelope: one Always Free compute instance (requested A1.Flex 1 OCPU / 6 GB;
+Stage 5 deployed `VM.Standard.E2.1.Micro` 1 OCPU / 1 GB because A1 capacity was
+exhausted), one 50 GB boot volume, one VCN. Inside OCI Always Free / trial credits
+this is **$0**. Set a budget alert in the OCI console before applying anything.
 
 ---
 
@@ -67,8 +68,9 @@ use project-relative paths for temporary files.
 - [ ] A compartment for this project; note its OCID.
 - [ ] A budget alert at a low threshold (e.g. $1) to catch accidental paid
       resources. The stack is free-tier by design, but alerts are cheap insurance.
-- [ ] A1.Flex capacity available in your target AD. If AD-1 reports
-      "Out of host capacity", pin AD-2/AD-3 with `availability_domain`.
+- [ ] Free-tier capacity available in your target AD. If A1.Flex reports
+      "Out of host capacity" in every AD, `VM.Standard.E2.1.Micro` (1 OCPU /
+      1 GB) is the documented fallback; it fits the container's 128 MiB cap.
 
 ### 2.2 API signing key (what Terraform authenticates with)
 

@@ -1,0 +1,194 @@
+================================================================================
+Project 07 — CI/CD Security & Compliance Scanner
+Stage 5 — Cloud Deployment & Integration on OCI
+Evidence transcript
+Date: 2026-11-13
+Target: Oracle Cloud Infrastructure, eu-frankfurt-1, trial credits
+Operator: Windows 11 + Git Bash → OpenTofu 1.13.9, Docker CLI, OpenSSH
+================================================================================
+
+DEPLOYED RESULT
+---------------
+  Public IP        130.162.211.255
+  Instance shape   VM.Standard.E2.1.Micro (1 OCPU / 1 GB, x86_64, Always Free)
+  Availability AD  jiTx:EU-FRANKFURT-1-AD-3
+  OS               Ubuntu 24.04.5 LTS, kernel 7.0.0-1013-oracle
+  Endpoint         http://130.162.211.255:8300  (operator CIDR only)
+  Container        cg-scanner, healthy, 19.31 MiB / 128 MiB
+  Scan result      21 findings, 9/10 controls failing, gate exit 1
+  Network          6 resources: VCN 10.7.0.0/16, IGW, route table, subnet
+                   10.7.1.0/24, security list, instance
+
+--------------------------------------------------------------------------------
+1. PROVISIONING
+--------------------------------------------------------------------------------
+$ tofu plan
+  Plan: 6 to add, 0 to change, 0 to destroy.
+
+$ tofu apply -auto-approve
+  5 network resources created.
+  module.compute.oci_core_instance.this: Creating...
+  Error: 500-InternalError, Out of host capacity.
+  Suggestion: The service for this resource encountered an error.
+  (OPC request ID 019a9426ffcd662e383357d344c763f3/...)
+
+A1.Flex capacity was exhausted in the pinned AD. The free shape was kept and the
+remaining availability domains were tried, as the runbook requires:
+
+  VM.Standard.A1.Flex 1 OCPU / 6 GB  AD-1  -> 500 Out of host capacity
+  VM.Standard.A1.Flex 1 OCPU / 6 GB  AD-2  -> 500 Out of host capacity
+  VM.Standard.A1.Flex 1 OCPU / 6 GB  AD-3  -> 500 Out of host capacity
+  VM.Standard.A1.Flex 1 OCPU / 1 GB  AD-1  -> 500 Out of host capacity
+  VM.Standard.A1.Flex 1 OCPU / 1 GB  AD-2  -> 500 Out of host capacity
+  VM.Standard.A1.Flex 1 OCPU / 1 GB  AD-3  -> 500 Out of host capacity
+  VM.Standard.E2.1.Micro             AD-1  -> 400 LimitExceeded
+  VM.Standard.E2.1.Micro             AD-2  -> 400 LimitExceeded
+  VM.Standard.E2.1.Micro             AD-3  -> APPLY OK (35 s)
+
+Outcome: the deployment runs on the AMD Always Free micro shape. This is a
+free-tier, trial-compatible shape with the same 8300-only ingress contract; the
+stack was sized for 1 OCPU / 1 GB already (128 MiB / 0.25 CPU cap), so no runtime
+change was needed. Region state at deployment time: ARM A1 capacity unavailable
+in all three ADs; E2 micro quota available only in AD-3.
+
+$ tofu output
+  instance_public_ip = "130.162.211.255"
+  instance_shape     = "VM.Standard.E2.1.Micro (1 OCPU / 1 GB)"
+  scanner_url        = "http://130.162.211.255:8300"
+
+Security list ingress (both from the operator CIDR only, 80.131.213.122/32):
+  TCP 22    SSH administration
+  TCP 8300  scanner API
+Egress: all (OS updates, image pulls). No 80/443 rule exists.
+
+--------------------------------------------------------------------------------
+2. HOST BOOTSTRAP AND TRANSFER
+--------------------------------------------------------------------------------
+First SSH attempt: connection timed out while the instance was still booting.
+After ~4 minutes TCP/22 answered and key-only SSH succeeded.
+
+$ ssh ubuntu@130.162.211.255
+  cloud-init status --wait  ->  status: done
+  docker --version          ->  Docker version 29.9.3, build 5457199
+  docker compose version    ->  Docker Compose version v5.7.1
+  systemctl is-active docker -> active
+  free -m                   ->  952 MB total
+
+The project was transferred as a credential-free archive (`.git`, `.env`,
+`terraform.tfvars`, `*.tfstate*`, `reports/`, `data/` excluded):
+
+  local  sha256: 7035836a5027d916...
+  remote sha256: 7035836a5027d916...
+  83 entries, 79 KB, 62 files extracted to /home/ubuntu/scanner
+
+Remote tree contains no Terraform variables, state, private key or `.git`
+directory. The runtime `.env` was written on the host, not copied:
+
+  SCANNER_BIND_ADDRESS=0.0.0.0
+  SCANNER_HOST_PORT=8300
+  SCANNER_POLICY_FILE=/etc/scanner/policies/compliance.toml
+  SCANNER_ALLOWED_ROOTS=/scan:/etc/scanner
+  SCANNER_WORKSPACE=../configs
+  SCANNER_FAIL_ON=high
+  SLACK_WEBHOOK_URL=        (empty)
+  ALERT_EMAIL=              (empty)
+
+Binding 0.0.0.0 is required for the OCI security-list rule to reach the port;
+the port is not internet-exposed because the list admits one /32. The zero-
+exposure alternative remains an SSH tunnel with the loopback default.
+
+--------------------------------------------------------------------------------
+3. REMOTE ORCHESTRATION
+--------------------------------------------------------------------------------
+$ cd ~/scanner
+$ docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+
+  Image cloudguard/scanner:local Built
+  Network cloudguard-scanner_default Created
+  Container cg-scanner Created
+  Container cg-scanner Started
+  COMPOSE_EXIT=0
+
+$ docker ps
+  cg-scanner | Up (healthy) | 0.0.0.0:8300->8300/tcp
+
+Live hardening read back from Docker on the instance:
+  readonly=true  capdrop=[ALL]  nnp=no-new-privileges:true
+  user=10001:10001  mem=134217728 (128 MiB)  pids=128
+
+--------------------------------------------------------------------------------
+4. LIVE VERIFICATION (from the operator host, over the public IP)
+--------------------------------------------------------------------------------
+$ curl http://130.162.211.255:8300/healthz
+  status=ok service=cicd-security-scanner version=0.1.0
+  policy=CloudGuard CI/CD Baseline v1.0.0 controls=10
+
+$ curl http://130.162.211.255:8300/policy
+  10 controls, fail_on=high, ignore=[.git/**, tests/fixtures/**, **/__pycache__/**,
+  data/**], ids CG-CI-001..CG-CI-010 (full JSON in the response)
+
+$ curl -X POST http://130.162.211.255:8300/scan -d '{"path":"/scan"}'
+  http=200 bytes=11280, 0.054 s
+  files=10 findings=21
+  summary={info:0, low:1, medium:7, high:9, critical:4}
+  categories={secret:2, pipeline:12, dependency:7}
+  controls_failed=9/10   report exit_code=1
+  credential value present in response: False
+
+The remote result is identical to the local Stage 4 result (21 findings, same
+severity split, same 9 failing controls), so the deployed image, policy mount and
+scan roots behave the same way as the verified local stack.
+
+Remote CLI gates (inside cg-scanner):
+  scan /scan          --fail-on high     -> exit 1
+  scan /etc/scanner/schema --fail-on low -> exit 0
+  scan /scan --format sarif              -> 2.1.0, 19 rules, 21 results
+                                            (13 error / 7 warning / 1 note)
+
+Evidence saved: docs/stage-5-evidence/remote-report.json (11,280 B) and
+remote-report.sarif (34,366 B), both fetched/generated on the live host.
+
+Audit trail on the instance:
+  {"event":"scan","target":"/scan","files":10,"findings":21,
+   "critical":4,"high":9,"controls_failed":9}
+  credential values in container logs: 0
+
+$ docker compose ... restart
+  after restart: healthy; scan events retained; /healthz ok
+  memory after restart: 19.31 MiB / 128 MiB
+
+--------------------------------------------------------------------------------
+5. INFRASTRUCTURE AS CODE STATE
+--------------------------------------------------------------------------------
+State contains exactly:
+  module.network.oci_core_vcn.this
+  module.network.oci_core_internet_gateway.this
+  module.network.oci_core_route_table.public
+  module.network.oci_core_security_list.public
+  module.network.oci_core_subnet.public
+  module.compute.oci_core_instance.this
+(plus read-only data sources for the image, VNIC and availability domains)
+
+`tofu fmt -recursive -check` and `tofu validate` remain clean after the shape/AD
+change. State and `terraform.tfvars` stay local and gitignored.
+
+--------------------------------------------------------------------------------
+6. WHAT WAS NOT DONE
+--------------------------------------------------------------------------------
+- No TLS and no authentication on :8300. The API is unauthenticated by design in
+  this project; exposure is controlled at the security list (single /32). Do not
+  widen `scanner_allowed_cidr`; the variable rejects 0.0.0.0/0.
+- No teardown: the instance is running and billing against trial credits. Destroy
+  only on operator request (`tofu plan -destroy` → `tofu destroy`).
+- Single instance, no load balancer, no backups. This is a verification
+  deployment, not a production HA topology.
+- A1.Flex could not be obtained in eu-frankfurt-1 at deploy time; the AMD micro
+  shape is the deployed fallback (documented above).
+
+================================================================================
+STAGE 5 RESULT: DEPLOYED AND VERIFIED
+6 OCI resources created on trial credits. Scanner healthy at
+http://130.162.211.255:8300, restricted to the operator CIDR, 21 findings across
+2 secrets / 12 pipeline / 7 dependency checks, 9/10 controls failing, gate exit 1,
+SARIF 2.1.0 with 21 results, audit events value-free and retained across restart.
+================================================================================

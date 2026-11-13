@@ -63,8 +63,9 @@ services:
       TZ: ${TZ:-UTC}
 
     ports:
-      # Loopback by default. On an instance publish on the private interface and
-      # keep 8300 out of the public security list.
+      # Loopback by default. The deployed host sets SCANNER_BIND_ADDRESS=0.0.0.0
+      # and admits 8300 only from one operator /32 in the OCI security list;
+      # never expose it to a broader range (the API has no authentication).
       - "${SCANNER_BIND_ADDRESS:-127.0.0.1}:${SCANNER_HOST_PORT:-8300}:8300"
 
     healthcheck:

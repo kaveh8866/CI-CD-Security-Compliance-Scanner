@@ -16,13 +16,14 @@ It is deliberately small: one service, one TOML policy, one JSON advisory
 catalogue, about 1,200 lines of Python, and a report format that never contains
 the secret it found.
 
-**Stage 4 status:** the stack has been verified end to end locally — 74 unit
-tests, 29 smoke assertions, JSON and SARIF exports, gate failures at the
-configured threshold, and value-free structured audit logs. The OCI
-infrastructure is written in OpenTofu (VCN, internet gateway, public subnet, a
-22/8300-only security list, Always Free A1.Flex instance); `tofu validate` passes
-and a real plan reports **6 to add**. Nothing has been applied, so no cloud
-resource exists or bills today.
+**Stage 5 status:** deployed and verified on OCI (`eu-frankfurt-1`, trial
+credits) at **http://130.162.211.255:8300** — a `VM.Standard.E2.1.Micro` in
+AD-3 running Ubuntu 24.04 with Docker 29.9.3 and Compose v5.7.1. The live scan
+matches the local baseline (21 findings, 9/10 controls failing, gate exit `1`,
+SARIF 2.1.0 with 21 results), the audit trail contains no credential value and
+survives a container restart. A1.Flex capacity was exhausted in every
+availability domain, so the deployment runs on the AMD Always Free micro shape.
+Ingress is restricted to the operator `/32` on 22 and 8300.
 
 ---
 
@@ -132,7 +133,7 @@ tofu init && tofu fmt -recursive -check && tofu validate && tofu plan
 | `oci_core_internet_gateway` + route table | egress for OS updates and image pulls |
 | `oci_core_security_list` | ingress **22** and **8300 only**, each from one operator CIDR |
 | `oci_core_subnet` `10.7.1.0/24` | public subnet with the instance VNIC |
-| `oci_core_instance` `VM.Standard.A1.Flex` | 1 OCPU / 6 GB, Ubuntu 24.04 ARM, 50 GB boot |
+| `oci_core_instance` | requested `A1.Flex` 1 OCPU / 6 GB (ARM); deployed `E2.1.Micro` 1 OCPU / 1 GB in AD-3 because A1 capacity was unavailable — Ubuntu 24.04, 50 GB boot |
 
 `scanner_allowed_cidr` is refused if set to `0.0.0.0/0` — in both the root and
 the module variable definitions. There is no 80/443 rule: this host serves no web
@@ -142,6 +143,25 @@ Outputs expose `instance_public_ip`, `instance_private_ip`, `scanner_url`,
 `ingress_exposure` and copy-paste connection strings. Cloud-init installs Docker
 and hardens the daemon and SSH; it deliberately carries **no credential** —
 user-data is readable on the host.
+
+**Deployed (Stage 5).** Six resources are live; the public IP is
+`130.162.211.255`. A credential-free archive is copied to `~/scanner` (the
+instance does not clone: the repository has never been pushed), the runtime
+`.env` is written on the host, and the stack starts with:
+
+```bash
+ssh ubuntu@130.162.211.255
+cd ~/scanner
+docker compose --env-file .env -f docker/docker-compose.yml up -d --build
+docker compose --env-file .env -f docker/docker-compose.yml ps   # cg-scanner (healthy)
+```
+
+The container binds `0.0.0.0:8300` **inside the host** so the security-list rule
+can reach it; the list admits only the operator `/32`, and
+`scanner_allowed_cidr` refuses `0.0.0.0/0`. The zero-exposure path (SSH tunnel
+with the loopback default) still works and needs no cloud change. State and
+`terraform.tfvars` remain local and gitignored; the instance was **not**
+destroyed.
 
 **Portability:** the module boundary (`network` → `subnet_id`; `compute` →
 `public_ip`) is provider-neutral. AWS and GCP mappings are documented in
@@ -250,7 +270,7 @@ produce noise.
 │   ├── advisories/                offline advisory catalogue
 │   ├── samples/                   intentionally insecure fixtures
 │   └── schema/                    policy and report JSON Schemas
-├── terraform/                     OCI VCN + subnet + security list + A1.Flex host, modules/
+├── terraform/                     OCI VCN + subnet + security list + free-tier host, modules/
 ├── tests/                         74 unit tests + smoke.sh (29 assertions)
 └── docs/                          stage evidence transcripts
 ```
@@ -277,7 +297,7 @@ Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 
 ---
 
-## ✅ Verification (Stage 1)
+## ✅ Verification (Stages 1–5)
 
 | Check | Result |
 | --- | --- |
@@ -289,7 +309,12 @@ Scanning the 10-file fixture set: **21 findings** (4 critical, 9 high, 7 medium,
 | Policy validation | `validate-policy` accepts the baseline, rejects five malformed variants |
 | Path boundary | `/scan` allowed; project root, `/etc` and traversal attempts → `403` |
 | Redaction | No fixture credential value appears in any report or container log |
-| Container posture | read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, non-root, limits as declared |
+| Container posture | read-only rootfs, `cap_drop: ALL`, `no-new-privileges`, non-root, limits as declared — re-read from the live host with `docker inspect` |
+| Live health (OCI) | `http://130.162.211.255:8300/healthz` → `ok`, 10 controls |
+| Live scan parity | 21 findings (4/9/7/1), 2 secrets, 12 pipeline, 7 dependency, 9/10 controls failing — identical to local |
+| Live gate | remote CLI `--fail-on high` → exit `1`; clean schema tree → exit `0` |
+| Live SARIF | 2.1.0, 19 rules, 21 results, 13 `error` / 7 `warning` / 1 `note` |
+| Live audit trail | structured scan events, zero credential values, retained across restart |
 | IaC formatting | `tofu fmt -recursive -check` clean |
 | IaC validation | `tofu validate` → `Success! The configuration is valid.` |
 | OCI plan | **6 to add, 0 to change, 0 to destroy** against the real tenancy (nothing applied) |
@@ -317,8 +342,15 @@ Transcript: `docs/stage-1-verification.txt`.
   `4.17.21` is not consulted yet.
 - **The API has no authentication.** It is loopback-only and intended to sit
   behind an SSH tunnel or private network; do not publish port 8300.
-- **Not yet cloud-deployed.** The OCI plan is validated but not applied, so
-  there is no live host or public IP to point at yet. Deployment is a later stage.
+- **The deployed API has no authentication either.** Exposure is controlled only
+  by the OCI security list (one operator `/32` on 8300), not by the application.
+  Treat it as a private endpoint; tunnel or add auth before sending real data.
+- **The live host is the AMD free-tier micro** (`E2.1.Micro`, 1 GB), not the
+  planned A1.Flex: ARM capacity was exhausted in all three availability domains.
+  The 128 MiB / 0.25 CPU cap makes the footprint fit, but throughput beyond these
+  fixture scans is unmeasured on 1 GB.
+- **Single instance, no TLS, no load balancer, no backups.** This is a
+  trial-credit verification deployment, not a production topology.
 - **Python 3.11+ is required** (`tomllib`); the image ships 3.12.
 
 ---
@@ -331,7 +363,7 @@ Transcript: `docs/stage-1-verification.txt`.
 | 2 | OpenTofu OCI network + compute, validated plan (6 to add) | ✅ complete |
 | 3 | Agent guide and operator prerequisites | ✅ complete |
 | 4 | Local stack, policy loading, JSON/SARIF reports, gate and audit-log verification | ✅ complete |
-| 5 | Cloud deployment verification with trial credits | ⬜ |
+| 5 | Cloud deployment on OCI trial credits, live scan and gate verification | ✅ complete |
 | 6 | Teardown and zero-cost proof | ⬜ |
 | 7 | Security audit, README hardening, cross-cloud cost model | ⬜ |
 | 8 | Release tag, public repository, CloudGuard certification | ⬜ |

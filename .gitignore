@@ -33,6 +33,7 @@ results/
 *.sarif.json
 # Stage evidence is publishable: findings carry sha256 fingerprints, not values.
 !docs/stage-4-evidence/*.sarif
+!docs/stage-5-evidence/*.sarif
 scanner.sqlite
 scanner.sqlite3
 scanner.db
