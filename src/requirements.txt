@@ -1,3 +1,3 @@
 # Runtime dependency. PyYAML parses GitHub Actions workflows; everything else
 # (TOML policy, HTTP, JSON, hashing) is Python 3.11+ standard library.
-PyYAML==6.0.2
+PyYAML==6.0.3
